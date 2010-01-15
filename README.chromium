@@ -1,0 +1,14 @@
+URL: http://sourceforge.net/projects/trousers/files/trousers/0.3.3/trousers-0.3.3.tar.gz/download
+
+UPSTREAM_REPO: http://trousers.cvs.sourceforge.net/viewvc/trousers/trousers/
+UPSTREAM_BUGSDB: https://sourceforge.net/tracker/?group_id=126012&atid=704358
+
+Version: 0.3.3
+License: CPL (IBM's Common Public License)
+License File: LICENSE
+
+Description:
+  The trousers package, for interfacing to the TPM.
+
+Local Modifications:
+  Currently no modifications, but some changes are expected for experimentation.
