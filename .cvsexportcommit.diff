@@ -1,0 +1,838 @@
+diff --git a/src/include/hosttable.h b/src/include/hosttable.h
+index 1b1f526..edc820b 100644
+--- a/src/include/hosttable.h
++++ b/src/include/hosttable.h
+@@ -36,7 +36,7 @@ struct host_table {
+ extern struct host_table *ht;
+ struct host_table_entry *get_table_entry(TCS_CONTEXT_HANDLE);
+ void put_table_entry(struct host_table_entry *);
+-TSS_RESULT add_table_entry(TSS_HCONTEXT, BYTE *, int, struct host_table_entry **);
++TSS_RESULT __tspi_add_table_entry(TSS_HCONTEXT, BYTE *, int, struct host_table_entry **);
+ void remove_table_entry(TCS_CONTEXT_HANDLE);
+ 
+ 
+diff --git a/src/include/obj.h b/src/include/obj.h
+index ac3f244..109a1ae 100644
+--- a/src/include/obj.h
++++ b/src/include/obj.h
+@@ -45,7 +45,7 @@ struct obj_list {
+ /* prototypes */
+ TSS_RESULT	   obj_getTpmObject(UINT32, TSS_HOBJECT *);
+ TSS_HOBJECT	   obj_GetPolicyOfObject(UINT32, UINT32);
+-void		   obj_list_init();
++void		   __tspi_obj_list_init();
+ TSS_HOBJECT	   obj_get_next_handle();
+ TSS_RESULT	   obj_list_add(struct obj_list *, UINT32, TSS_FLAG, void *, TSS_HOBJECT *);
+ TSS_RESULT	   obj_list_remove(struct obj_list *, void (*)(void *), TSS_HOBJECT, TSS_HCONTEXT);
+diff --git a/src/include/obj_context.h b/src/include/obj_context.h
+index 346a2b0..5e31192 100644
+--- a/src/include/obj_context.h
++++ b/src/include/obj_context.h
+@@ -46,7 +46,7 @@ struct tr_context_obj {
+ };
+ 
+ /* obj_context.c */
+-void       obj_context_free(void *data);
++void       __tspi_obj_context_free(void *data);
+ TSS_BOOL   obj_is_context(TSS_HOBJECT);
+ TSS_RESULT obj_context_get_policy(TSS_HCONTEXT, UINT32, TSS_HPOLICY *);
+ TSS_BOOL   obj_context_is_silent(TSS_HCONTEXT);
+@@ -88,6 +88,6 @@ struct tcs_api_table *obj_context_get_tcs_api();
+ #define CONTEXT_LIST_DECLARE_EXTERN	extern struct obj_list context_list
+ #define CONTEXT_LIST_INIT()		list_init(&context_list)
+ #define CONTEXT_LIST_CONNECT(a,b)	obj_connectContext_list(&context_list, a, b)
+-#define CONTEXT_LIST_CLOSE(a)		obj_list_close(&context_list, &obj_context_free, a)
++#define CONTEXT_LIST_CLOSE(a)		obj_list_close(&context_list, &__tspi_obj_context_free, a)
+ 
+ #endif
+diff --git a/src/include/obj_hash.h b/src/include/obj_hash.h
+index 4b495f8..a835f7a 100644
+--- a/src/include/obj_hash.h
++++ b/src/include/obj_hash.h
+@@ -23,7 +23,7 @@ struct tr_hash_obj {
+ };
+ 
+ /* obj_hash.c */
+-void       hash_free(void *data);
++void       __tspi_hash_free(void *data);
+ TSS_RESULT obj_hash_add(TSS_HCONTEXT, UINT32, TSS_HOBJECT *);
+ TSS_BOOL   obj_is_hash(TSS_HOBJECT);
+ TSS_RESULT obj_hash_remove(TSS_HOBJECT, TSS_HCONTEXT);
+@@ -36,7 +36,7 @@ TSS_RESULT obj_hash_update_value(TSS_HHASH, UINT32, BYTE *);
+ #define HASH_LIST_DECLARE_EXTERN	extern struct obj_list hash_list
+ #define HASH_LIST_INIT()		list_init(&hash_list)
+ #define HASH_LIST_CONNECT(a,b)		obj_connectContext_list(&hash_list, a, b)
+-#define HASH_LIST_CLOSE(a)		obj_list_close(&hash_list, &hash_free, a)
++#define HASH_LIST_CLOSE(a)		obj_list_close(&hash_list, &__tspi_hash_free, a)
+ 
+ #else
+ 
+diff --git a/src/include/obj_policy.h b/src/include/obj_policy.h
+index 2bfbaa1..6f1965e 100644
+--- a/src/include/obj_policy.h
++++ b/src/include/obj_policy.h
+@@ -109,7 +109,7 @@ struct tr_policy_obj {
+ };
+ 
+ /* obj_policy.c */
+-void       policy_free(void *data);
++void       __tspi_policy_free(void *data);
+ TSS_BOOL   anyPopupPolicies(TSS_HCONTEXT);
+ TSS_BOOL   obj_is_policy(TSS_HOBJECT);
+ TSS_RESULT obj_policy_get_tsp_context(TSS_HPOLICY, TSS_HCONTEXT *);
+@@ -179,6 +179,6 @@ TSS_RESULT obj_policy_get_delegate_public(struct tsp_object *, TPM_DELEGATE_PUBL
+ #define POLICY_LIST_DECLARE_EXTERN	extern struct obj_list policy_list
+ #define POLICY_LIST_INIT()		list_init(&policy_list)
+ #define POLICY_LIST_CONNECT(a,b)	obj_connectContext_list(&policy_list, a, b)
+-#define POLICY_LIST_CLOSE(a)		obj_list_close(&policy_list, &policy_free, a)
++#define POLICY_LIST_CLOSE(a)		obj_list_close(&policy_list, &__tspi_policy_free, a)
+ 
+ #endif
+diff --git a/src/include/obj_rsakey.h b/src/include/obj_rsakey.h
+index 0b71da0..48c0931 100644
+--- a/src/include/obj_rsakey.h
++++ b/src/include/obj_rsakey.h
+@@ -37,7 +37,7 @@ struct tr_rsakey_obj {
+ };
+ 
+ /* obj_rsakey.c */
+-void       rsakey_free(void *data);
++void       __tspi_rsakey_free(void *data);
+ TSS_BOOL   obj_is_rsakey(TSS_HOBJECT);
+ TSS_RESULT obj_rsakey_add(TSS_HCONTEXT, TSS_FLAG, TSS_HOBJECT *);
+ TSS_RESULT obj_rsakey_add_by_key(TSS_HCONTEXT, TSS_UUID *, BYTE *, TSS_FLAG, TSS_HKEY *);
+@@ -112,7 +112,7 @@ TSS_RESULT obj_rsakey_set_srk_pubkey(BYTE *);
+ #define RSAKEY_LIST_DECLARE_EXTERN	extern struct obj_list rsakey_list
+ #define RSAKEY_LIST_INIT()		list_init(&rsakey_list)
+ #define RSAKEY_LIST_CONNECT(a,b)	obj_connectContext_list(&rsakey_list, a, b)
+-#define RSAKEY_LIST_CLOSE(a)		obj_list_close(&rsakey_list, &rsakey_free, a)
++#define RSAKEY_LIST_CLOSE(a)		obj_list_close(&rsakey_list, &__tspi_rsakey_free, a)
+ 
+ #else
+ 
+diff --git a/src/include/rpc_tcstp_tsp.h b/src/include/rpc_tcstp_tsp.h
+index 8d6b712..79f5e9f 100644
+--- a/src/include/rpc_tcstp_tsp.h
++++ b/src/include/rpc_tcstp_tsp.h
+@@ -21,7 +21,7 @@ UINT32 getData(TCSD_PACKET_TYPE,int,void *,int,struct tcsd_comm_data *);
+ void initData(struct tcsd_comm_data *, int);
+ TSS_RESULT sendTCSDPacket(struct host_table_entry *);
+ TSS_RESULT send_init(struct host_table_entry *);
+-TSS_RESULT sendit(struct host_table_entry *);
++TSS_RESULT tcs_sendit(struct host_table_entry *);
+ short get_port();
+ 
+ /* Context commands always included */
+diff --git a/src/include/spi_utils.h b/src/include/spi_utils.h
+index bab83dc..f93e877 100644
+--- a/src/include/spi_utils.h
++++ b/src/include/spi_utils.h
+@@ -46,7 +46,7 @@ MUTEX_DECLARE_EXTERN(mem_cache_lock);
+ 
+ void *calloc_tspi(TSS_HCONTEXT, UINT32);
+ TSS_RESULT free_tspi(TSS_HCONTEXT, void *);
+-TSS_RESULT add_mem_entry(TSS_HCONTEXT, void *);
++TSS_RESULT __tspi_add_mem_entry(TSS_HCONTEXT, void *);
+ 
+ /* secrets.c */
+ 
+@@ -77,7 +77,7 @@ TSS_RESULT changeauth_encdata(TSS_HCONTEXT, TSS_HOBJECT, TSS_HOBJECT, TSS_HPOLIC
+ TSS_RESULT sealx_mask_cb(PVOID, TSS_HKEY, TSS_HENCDATA, TSS_ALGORITHM_ID, UINT32, BYTE *, BYTE *,
+ 			 BYTE *, BYTE *, UINT32, BYTE *, BYTE *);
+ 
+-TSS_RESULT free_resource(TSS_HCONTEXT, UINT32, UINT32);
++TSS_RESULT __tspi_free_resource(TSS_HCONTEXT, UINT32, UINT32);
+ TSS_RESULT owner_get_pubek(TSS_HCONTEXT, TSS_HTPM, TSS_HKEY *);
+ 
+ #define next( x )	x = x->next
+@@ -136,8 +136,8 @@ TSS_RESULT get_local_random(TSS_HCONTEXT, TSS_BOOL, UINT32, BYTE **);
+ 
+ extern TSS_VERSION VERSION_1_1;
+ 
+-TSS_RESULT rsa_encrypt(TSS_HKEY, UINT32, BYTE*, UINT32*, BYTE*);
+-TSS_RESULT rsa_verify(TSS_HKEY, UINT32, UINT32, BYTE*, UINT32, BYTE*);
++TSS_RESULT __tspi_rsa_encrypt(TSS_HKEY, UINT32, BYTE*, UINT32*, BYTE*);
++TSS_RESULT __tspi_rsa_verify(TSS_HKEY, UINT32, UINT32, BYTE*, UINT32, BYTE*);
+ 
+ TSS_RESULT Init_AuthNonce(TCS_CONTEXT_HANDLE, TSS_BOOL, TPM_AUTH *);
+ TSS_BOOL validateReturnAuth(BYTE *, BYTE *, TPM_AUTH *);
+diff --git a/src/include/tsp_audit.h b/src/include/tsp_audit.h
+index 0b1ed3c..71bf8c4 100644
+--- a/src/include/tsp_audit.h
++++ b/src/include/tsp_audit.h
+@@ -11,6 +11,6 @@
+ #ifndef _TSP_AUDIT_H_
+ #define _TSP_AUDIT_H_
+ 
+-TSS_RESULT	   audit_set_ordinal_audit_status(TSS_HTPM, TSS_FLAG, TSS_FLAG, UINT32);
++TSS_RESULT	   __tspi_audit_set_ordinal_audit_status(TSS_HTPM, TSS_FLAG, TSS_FLAG, UINT32);
+ 
+ #endif
+diff --git a/src/include/tsp_delegate.h b/src/include/tsp_delegate.h
+index e1d754a..ce93d2d 100644
+--- a/src/include/tsp_delegate.h
++++ b/src/include/tsp_delegate.h
+@@ -18,6 +18,6 @@ TSS_RESULT	create_owner_delegation(TSS_HTPM, BYTE, UINT32, TSS_HPCRS, TSS_HDELFA
+ 
+ TSS_RESULT	update_delfamily_object(TSS_HTPM, UINT32);
+ TSS_RESULT	get_delegate_index(TSS_HCONTEXT, UINT32, TPM_DELEGATE_PUBLIC *);
+-TSS_RESULT	build_delegate_public_info(BYTE, TSS_HPCRS, TSS_HDELFAMILY, TSS_HPOLICY, UINT32 *, BYTE **);
++TSS_RESULT	__tspi_build_delegate_public_info(BYTE, TSS_HPCRS, TSS_HDELFAMILY, TSS_HPOLICY, UINT32 *, BYTE **);
+ 
+ #endif
+diff --git a/src/tspi/daa/daa_platform/platform.c b/src/tspi/daa/daa_platform/platform.c
+index bb30f99..80180ca 100644
+--- a/src/tspi/daa/daa_platform/platform.c
++++ b/src/tspi/daa/daa_platform/platform.c
+@@ -705,7 +705,7 @@ Tspi_TPM_DAA_JoinInit_internal(TSS_HTPM			hTPM,
+ #error set all 3 credentials in the daaIdentityProof struct here
+ 
+ 	/* set the U data */
+-	if ((result = add_mem_entry(tspContext, outputData)))
++	if ((result = __tspi_add_mem_entry(tspContext, outputData)))
+ 		goto close;
+ 	*capitalUPrime = outputData;
+ 	*capitalUPrimeLength = outputSize;
+diff --git a/src/tspi/gtk/support.c b/src/tspi/gtk/support.c
+index e4d882e..6ce3870 100644
+--- a/src/tspi/gtk/support.c
++++ b/src/tspi/gtk/support.c
+@@ -59,7 +59,7 @@ static GList *pixmaps_directories = NULL;
+ 
+ /* Use this function to set the directory containing installed pixmaps. */
+ void
+-add_pixmap_directory                   (const gchar     *directory)
++__tspi_add_pixmap_directory                   (const gchar     *directory)
+ {
+   pixmaps_directories = g_list_prepend (pixmaps_directories,
+                                         g_strdup (directory));
+diff --git a/src/tspi/gtk/support.h b/src/tspi/gtk/support.h
+index 03bc45b..3b8186a 100644
+--- a/src/tspi/gtk/support.h
++++ b/src/tspi/gtk/support.h
+@@ -59,7 +59,7 @@ GtkWidget*  lookup_widget              (GtkWidget       *widget,
+ 
+ 
+ /* Use this function to set the directory containing installed pixmaps. */
+-void        add_pixmap_directory       (const gchar     *directory);
++void        __tspi_add_pixmap_directory       (const gchar     *directory);
+ 
+ 
+ /*
+diff --git a/src/tspi/obj.c b/src/tspi/obj.c
+index 008eeb3..ad5c79a 100644
+--- a/src/tspi/obj.c
++++ b/src/tspi/obj.c
+@@ -47,7 +47,7 @@ list_init(struct obj_list *list)
+ }
+ 
+ void
+-obj_list_init()
++__tspi_obj_list_init()
+ {
+ 	TPM_LIST_INIT();
+ 	CONTEXT_LIST_INIT();
+diff --git a/src/tspi/obj_context.c b/src/tspi/obj_context.c
+index b5950ec..b2a0f63 100644
+--- a/src/tspi/obj_context.c
++++ b/src/tspi/obj_context.c
+@@ -61,7 +61,7 @@ obj_context_add(TSS_HOBJECT *phObject)
+ 
+ 	/* Add the default policy */
+ 	if ((result = obj_policy_add(*phObject, TSS_POLICY_USAGE, &context->policy))) {
+-		obj_list_remove(&context_list, &obj_context_free, *phObject, *phObject);
++		obj_list_remove(&context_list, &__tspi_obj_context_free, *phObject, *phObject);
+ 		return result;
+ 	}
+ 
+@@ -96,7 +96,7 @@ obj_context_get_tcs_api(TSS_HCONTEXT tspContext)
+ }
+ 
+ void
+-obj_context_free(void *data)
++__tspi_obj_context_free(void *data)
+ {
+ 	struct tr_context_obj *context = (struct tr_context_obj *)data;
+ 
+@@ -763,7 +763,7 @@ obj_context_transport_establish(TSS_HCONTEXT tspContext, struct tr_context_obj *
+ 
+ 		/* encrypt the sym key with the wrapping RSA key */
+ 		encKeyLen = sizeof(encKey);
+-		if ((result = rsa_encrypt(context->transKey, secretLen, transAuthBlob, &encKeyLen,
++		if ((result = __tspi_rsa_encrypt(context->transKey, secretLen, transAuthBlob, &encKeyLen,
+ 					  encKey)))
+ 			return result;
+ 
+diff --git a/src/tspi/obj_hash.c b/src/tspi/obj_hash.c
+index 425b86d..0925a81 100644
+--- a/src/tspi/obj_hash.c
++++ b/src/tspi/obj_hash.c
+@@ -202,7 +202,7 @@ done:
+ }
+ 
+ void
+-hash_free(void *data)
++__tspi_hash_free(void *data)
+ {
+ 	struct tr_hash_obj *hash = (struct tr_hash_obj *)data;
+ 
+@@ -219,7 +219,7 @@ obj_hash_remove(TSS_HOBJECT hObject, TSS_HCONTEXT tspContext)
+ {
+ 	TSS_RESULT result;
+ 
+-	if ((result = obj_list_remove(&hash_list, &hash_free, hObject, tspContext)))
++	if ((result = obj_list_remove(&hash_list, &__tspi_hash_free, hObject, tspContext)))
+ 		return result;
+ 
+ 	return TSS_SUCCESS;
+diff --git a/src/tspi/obj_policy.c b/src/tspi/obj_policy.c
+index b441ab1..374a4bd 100644
+--- a/src/tspi/obj_policy.c
++++ b/src/tspi/obj_policy.c
+@@ -61,7 +61,7 @@ obj_policy_add(TSS_HCONTEXT tsp_context, UINT32 type, TSS_HOBJECT *phObject)
+ }
+ 
+ void
+-policy_free(void *data)
++__tspi_policy_free(void *data)
+ {
+ 	struct tr_policy_obj *policy = (struct tr_policy_obj *)data;
+ 
+@@ -77,7 +77,7 @@ obj_policy_remove(TSS_HOBJECT hObject, TSS_HCONTEXT tspContext)
+ {
+ 	TSS_RESULT result;
+ 
+-	if ((result = obj_list_remove(&policy_list, &policy_free, hObject, tspContext)))
++	if ((result = obj_list_remove(&policy_list, &__tspi_policy_free, hObject, tspContext)))
+ 		return result;
+ 
+ 	obj_lists_remove_policy_refs(hObject, tspContext);
+diff --git a/src/tspi/obj_rsakey.c b/src/tspi/obj_rsakey.c
+index cf39342..2b0b421 100644
+--- a/src/tspi/obj_rsakey.c
++++ b/src/tspi/obj_rsakey.c
+@@ -1815,7 +1815,7 @@ done:
+ }
+ 
+ void
+-rsakey_free(void *data)
++__tspi_rsakey_free(void *data)
+ {
+ 	struct tr_rsakey_obj *rsakey = (struct tr_rsakey_obj *)data;
+ 
+@@ -1833,7 +1833,7 @@ obj_rsakey_remove(TSS_HOBJECT hObject, TSS_HCONTEXT tspContext)
+ {
+ 	TSS_RESULT result;
+ 
+-	if ((result = obj_list_remove(&rsakey_list, &rsakey_free, hObject, tspContext)))
++	if ((result = obj_list_remove(&rsakey_list, &__tspi_rsakey_free, hObject, tspContext)))
+ 		return result;
+ 
+ 	return TSS_SUCCESS;
+diff --git a/src/tspi/rpc/hosttable.c b/src/tspi/rpc/hosttable.c
+index 717f932..99bb276 100644
+--- a/src/tspi/rpc/hosttable.c
++++ b/src/tspi/rpc/hosttable.c
+@@ -38,7 +38,7 @@ host_table_init()
+ void __attribute__ ((constructor)) my_init(void)
+ {
+ 	host_table_init();
+-	obj_list_init();
++	__tspi_obj_list_init();
+ }
+ 
+ #if 0
+@@ -68,7 +68,7 @@ void __attribute__ ((destructor)) my_fini(void)
+ #endif
+ 
+ TSS_RESULT
+-add_table_entry(TSS_HCONTEXT tspContext, BYTE *host, int type, struct host_table_entry **ret)
++__tspi_add_table_entry(TSS_HCONTEXT tspContext, BYTE *host, int type, struct host_table_entry **ret)
+ {
+ 	struct host_table_entry *entry, *tmp;
+ 
+diff --git a/src/tspi/rpc/tcs_api.c b/src/tspi/rpc/tcs_api.c
+index b9cc185..3eeb1fb 100644
+--- a/src/tspi/rpc/tcs_api.c
++++ b/src/tspi/rpc/tcs_api.c
+@@ -38,8 +38,8 @@ RPC_OpenContext(TSS_HCONTEXT tspContext, BYTE *hostname, int type)
+ 	struct host_table_entry *entry;
+ 	UINT32 tpm_version;
+ 
+-	/* add_table_entry() will make sure an entry doesn't already exist for this tsp context */
+-	if ((result = add_table_entry(tspContext, hostname, type, &entry)))
++	/* __tspi_add_table_entry() will make sure an entry doesn't already exist for this tsp context */
++	if ((result = __tspi_add_table_entry(tspContext, hostname, type, &entry)))
+ 		return result;
+ 
+ 	switch (type) {
+diff --git a/src/tspi/rpc/tcstp/rpc.c b/src/tspi/rpc/tcstp/rpc.c
+index f67c4e8..963da1f 100644
+--- a/src/tspi/rpc/tcstp/rpc.c
++++ b/src/tspi/rpc/tcstp/rpc.c
+@@ -278,7 +278,7 @@ sendTCSDPacket(struct host_table_entry *hte)
+ 			return rc;
+ 		}
+ 	} else {
+-		if ((rc = sendit(hte))) {
++		if ((rc = tcs_sendit(hte))) {
+ 			LogError("Failed to send packet");
+ 			return rc;
+ 		}
+@@ -436,7 +436,7 @@ err_exit:
+ }
+ 
+ TSS_RESULT
+-sendit(struct host_table_entry *hte)
++tcs_sendit(struct host_table_entry *hte)
+ {
+ 	int recv_size;
+ 	BYTE *buffer;
+diff --git a/src/tspi/tsp_asym.c b/src/tspi/tsp_asym.c
+index 3e15697..721e8fd 100644
+--- a/src/tspi/tsp_asym.c
++++ b/src/tspi/tsp_asym.c
+@@ -24,7 +24,7 @@
+ 
+ /* encrypt some data with the RSA public key of 'key', using the padding appropriate for the key */
+ TSS_RESULT
+-rsa_encrypt(TSS_HKEY key,
++__tspi_rsa_encrypt(TSS_HKEY key,
+ 	    UINT32   inDataLen,
+ 	    BYTE*    inData,
+ 	    UINT32*  outDataLen,
+@@ -77,7 +77,7 @@ done:
+ }
+ 
+ TSS_RESULT
+-rsa_verify(TSS_HKEY key,
++__tspi_rsa_verify(TSS_HKEY key,
+ 	   UINT32   type,
+ 	   UINT32   hashLen,
+ 	   BYTE*    hash,
+diff --git a/src/tspi/tsp_audit.c b/src/tspi/tsp_audit.c
+index da34df9..1c5faf1 100644
+--- a/src/tspi/tsp_audit.c
++++ b/src/tspi/tsp_audit.c
+@@ -22,7 +22,7 @@
+ 
+ 
+ TSS_RESULT
+-audit_set_ordinal_audit_status(TSS_HTPM hTpm,
++__tspi_audit_set_ordinal_audit_status(TSS_HTPM hTpm,
+ 				TSS_FLAG flag,
+ 				TSS_FLAG subFlag,
+ 				UINT32 ulOrdinal)
+diff --git a/src/tspi/tsp_auth.c b/src/tspi/tsp_auth.c
+index 2b71eb0..0939e61 100644
+--- a/src/tspi/tsp_auth.c
++++ b/src/tspi/tsp_auth.c
+@@ -1084,7 +1084,7 @@ authsess_xsap_verify(struct authsess *sess, TPM_DIGEST *digest)
+ }
+ 
+ TSS_RESULT
+-free_resource(TSS_HCONTEXT tspContext, UINT32 handle, UINT32 resourceType)
++__tspi_free_resource(TSS_HCONTEXT tspContext, UINT32 handle, UINT32 resourceType)
+ {
+ 	TSS_RESULT result = TSS_SUCCESS;
+ #ifdef TSS_BUILD_TSS12
+@@ -1120,7 +1120,7 @@ authsess_free(struct authsess *xsap)
+ {
+ 	if (xsap) {
+ 		if (xsap->auth.AuthHandle && xsap->auth.fContinueAuthSession)
+-			(void)free_resource(xsap->tspContext, xsap->auth.AuthHandle, TPM_RT_AUTH);
++			(void)__tspi_free_resource(xsap->tspContext, xsap->auth.AuthHandle, TPM_RT_AUTH);
+ 
+ 		free(xsap->entityValue);
+ 		free(xsap);
+diff --git a/src/tspi/tsp_context_mem.c b/src/tspi/tsp_context_mem.c
+index 820c976..b1993bc 100644
+--- a/src/tspi/tsp_context_mem.c
++++ b/src/tspi/tsp_context_mem.c
+@@ -38,7 +38,7 @@ getTable(TSS_HCONTEXT tspContext)
+  * @tspContext exists before calling.
+  */
+ void
+-addEntry(TSS_HCONTEXT tspContext, struct memEntry *new)
++__tspi_addEntry(TSS_HCONTEXT tspContext, struct memEntry *new)
+ {
+ 	struct memTable *tmp = getTable(tspContext);
+ 	struct memEntry *tmp_entry = tmp->entries;
+@@ -59,7 +59,7 @@ addEntry(TSS_HCONTEXT tspContext, struct memEntry *new)
+ 
+ /* caller needs to lock memtable lock */
+ void
+-addTable(struct memTable *new)
++__tspi_addTable(struct memTable *new)
+ {
+ 	struct memTable *tmp = SpiMemoryTable;
+ 
+@@ -79,7 +79,7 @@ addTable(struct memTable *new)
+ 
+ /* caller needs to lock memtable lock */
+ TSS_RESULT
+-freeTable(TSS_HCONTEXT tspContext)
++__tspi_freeTable(TSS_HCONTEXT tspContext)
+ {
+ 	struct memTable *prev = NULL, *index = NULL, *next = NULL;
+ 	struct memEntry *entry = NULL, *entry_next = NULL;
+@@ -109,7 +109,7 @@ freeTable(TSS_HCONTEXT tspContext)
+ }
+ 
+ TSS_RESULT
+-freeEntry(struct memTable *table, void *pointer)
++__tspi_freeEntry(struct memTable *table, void *pointer)
+ {
+ 	struct memEntry *index = NULL;
+ 	struct memEntry *prev = NULL;
+@@ -133,7 +133,7 @@ freeEntry(struct memTable *table, void *pointer)
+ }
+ 
+ TSS_RESULT
+-add_mem_entry(TSS_HCONTEXT tspContext, void *allocd_mem)
++__tspi_add_mem_entry(TSS_HCONTEXT tspContext, void *allocd_mem)
+ {
+ 	struct memEntry *newEntry = calloc(1, sizeof(struct memEntry));
+ 	if (newEntry == NULL) {
+@@ -145,7 +145,7 @@ add_mem_entry(TSS_HCONTEXT tspContext, void *allocd_mem)
+ 
+ 	MUTEX_LOCK(memtable_lock);
+ 
+-	addEntry(tspContext, newEntry);
++	__tspi_addEntry(tspContext, newEntry);
+ 
+ 	MUTEX_UNLOCK(memtable_lock);
+ 
+@@ -176,7 +176,7 @@ calloc_tspi(TSS_HCONTEXT tspContext, UINT32 howMuch)
+ 			return NULL;
+ 		}
+ 		table->tspContext = tspContext;
+-		addTable(table);
++		__tspi_addTable(table);
+ 	}
+ 
+ 	newEntry = calloc(1, sizeof(struct memEntry));
+@@ -197,7 +197,7 @@ calloc_tspi(TSS_HCONTEXT tspContext, UINT32 howMuch)
+ 	/* this call must happen inside the lock or else another thread could
+ 	 * remove the context mem slot, causing a segfault
+ 	 */
+-	addEntry(tspContext, newEntry);
++	__tspi_addEntry(tspContext, newEntry);
+ 
+ 	MUTEX_UNLOCK(memtable_lock);
+ 
+@@ -217,7 +217,7 @@ free_tspi(TSS_HCONTEXT tspContext, void *memPointer)
+ 	MUTEX_LOCK(memtable_lock);
+ 
+ 	if (memPointer == NULL) {
+-		result = freeTable(tspContext);
++		result = __tspi_freeTable(tspContext);
+ 		MUTEX_UNLOCK(memtable_lock);
+ 		return result;
+ 	}
+@@ -230,7 +230,7 @@ free_tspi(TSS_HCONTEXT tspContext, void *memPointer)
+ 	}
+ 
+ 	/* just free one entry */
+-	result = freeEntry(index, memPointer);
++	result = __tspi_freeEntry(index, memPointer);
+ 
+ 	MUTEX_UNLOCK(memtable_lock);
+ 
+diff --git a/src/tspi/tsp_delegate.c b/src/tspi/tsp_delegate.c
+index 0348b9f..0319e58 100644
+--- a/src/tspi/tsp_delegate.c
++++ b/src/tspi/tsp_delegate.c
+@@ -129,7 +129,7 @@ create_owner_delegation(TSS_HTPM       hTpm,
+ 	if (type != TSS_DELEGATIONTYPE_OWNER)
+ 		return TSPERR(TSS_E_BAD_PARAMETER);
+ 
+-	if ((result = build_delegate_public_info(bLabel, hPcrs, hFamily, hDelegation,
++	if ((result = __tspi_build_delegate_public_info(bLabel, hPcrs, hFamily, hDelegation,
+ 			&publicInfoSize, &publicInfo)))
+ 		return result;
+ 
+@@ -216,7 +216,7 @@ create_key_delegation(TSS_HKEY       hKey,
+ 	if ((result = obj_rsakey_get_tcs_handle(hKey, &tcsKeyHandle)))
+ 		return result;
+ 
+-	if ((result = build_delegate_public_info(bLabel, hPcrs, hFamily, hDelegation,
++	if ((result = __tspi_build_delegate_public_info(bLabel, hPcrs, hFamily, hDelegation,
+ 			&publicInfoSize, &publicInfo)))
+ 		return result;
+ 
+@@ -364,7 +364,7 @@ done:
+ }
+ 
+ TSS_RESULT
+-build_delegate_public_info(BYTE           bLabel,
++__tspi_build_delegate_public_info(BYTE           bLabel,
+ 			   TSS_HPCRS      hPcrs,
+ 			   TSS_HDELFAMILY hFamily,
+ 			   TSS_HPOLICY    hDelegation,
+diff --git a/src/tspi/tspi_audit.c b/src/tspi/tspi_audit.c
+index a512e95..1c13ca1 100644
+--- a/src/tspi/tspi_audit.c
++++ b/src/tspi/tspi_audit.c
+@@ -247,7 +247,7 @@ done1:
+ 						 digest.digest)))
+ 				goto done2;
+ 
+-			if ((result = rsa_verify(hKey, TSS_HASH_SHA1, sizeof(digest.digest),
++			if ((result = __tspi_rsa_verify(hKey, TSS_HASH_SHA1, sizeof(digest.digest),
+ 						 digest.digest, sigSize, sig))) {
+ 				result = TSPERR(TSS_E_VERIFICATION_FAILED);
+ 				goto done2;
+diff --git a/src/tspi/tspi_bind.c b/src/tspi/tspi_bind.c
+index a000915..ae9a8ba 100644
+--- a/src/tspi/tspi_bind.c
++++ b/src/tspi/tspi_bind.c
+@@ -204,7 +204,7 @@ Tspi_Data_Unbind(TSS_HENCDATA hEncData,		/* in */
+ 			goto error;
+ 	}
+ 
+-	if ((result = add_mem_entry(tspContext, *prgbUnboundData)))
++	if ((result = __tspi_add_mem_entry(tspContext, *prgbUnboundData)))
+ 		goto error;
+ 
+ 	return TSS_SUCCESS;
+diff --git a/src/tspi/tspi_caps_tpm.c b/src/tspi/tspi_caps_tpm.c
+index c209603..131e67b 100644
+--- a/src/tspi/tspi_caps_tpm.c
++++ b/src/tspi/tspi_caps_tpm.c
+@@ -327,7 +327,7 @@ Tspi_TPM_GetCapability(TSS_HTPM hTPM,			/* in */
+ 			*(UINT32 *)(*prgbRespData) = endian16(*(UINT32 *)(*prgbRespData));
+ 	}
+ 
+-	if ((result = add_mem_entry(tspContext, *prgbRespData))) {
++	if ((result = __tspi_add_mem_entry(tspContext, *prgbRespData))) {
+ 		free(*prgbRespData);
+ 		*prgbRespData = NULL;
+ 		*pulRespDataLength = 0;
+diff --git a/src/tspi/tspi_certify.c b/src/tspi/tspi_certify.c
+index b9faae0..795d2d4 100644
+--- a/src/tspi/tspi_certify.c
++++ b/src/tspi/tspi_certify.c
+@@ -139,7 +139,7 @@ Tspi_Key_CertifyKey(TSS_HKEY hKey,			/* in */
+ 					 digest.digest)))
+ 			return result;
+ 
+-		if ((result = rsa_verify(hCertifyingKey, TSS_HASH_SHA1, TPM_SHA1_160_HASH_LEN,
++		if ((result = __tspi_rsa_verify(hCertifyingKey, TSS_HASH_SHA1, TPM_SHA1_160_HASH_LEN,
+ 					 digest.digest, outDataSize, outData)))
+ 			return TSPERR(TSS_E_VERIFICATION_FAILED);
+ 	} else {
+diff --git a/src/tspi/tspi_getset.c b/src/tspi/tspi_getset.c
+index c0cbc7a..3fa8727 100644
+--- a/src/tspi/tspi_getset.c
++++ b/src/tspi/tspi_getset.c
+@@ -247,7 +247,7 @@ Tspi_SetAttribUint32(TSS_HOBJECT hObject,	/* in */
+ 				break;
+ #ifdef TSS_BUILD_AUDIT
+ 			case TSS_TSPATTRIB_TPM_ORDINAL_AUDIT_STATUS:
+-				result = audit_set_ordinal_audit_status(hObject, attribFlag,
++				result = __tspi_audit_set_ordinal_audit_status(hObject, attribFlag,
+ 									subFlag, ulAttrib);
+ 				break;
+ #endif
+diff --git a/src/tspi/tspi_key.c b/src/tspi/tspi_key.c
+index bb23d06..5acd605 100644
+--- a/src/tspi/tspi_key.c
++++ b/src/tspi/tspi_key.c
+@@ -37,7 +37,7 @@ Tspi_Key_UnloadKey(TSS_HKEY hKey)	/* in */
+ 	if ((result = obj_rsakey_get_tcs_handle(hKey, &hTcsKey)))
+ 		return result;
+ 
+-	return free_resource(tspContext, hTcsKey, TPM_RT_KEY);
++	return __tspi_free_resource(tspContext, hTcsKey, TPM_RT_KEY);
+ }
+ 
+ TSS_RESULT
+@@ -181,7 +181,7 @@ Tspi_Key_GetPubKey(TSS_HKEY hKey,		/* in */
+ 			goto error;
+ 	}
+ 
+-	if ((result = add_mem_entry(tspContext, *prgbPubKey)))
++	if ((result = __tspi_add_mem_entry(tspContext, *prgbPubKey)))
+ 		goto error;
+ 
+ 	if (tcsKeyHandle == TPM_KEYHND_SRK)
+@@ -599,7 +599,7 @@ Tspi_TPM_OwnerGetSRKPubKey(TSS_HTPM hTPM,		/* in */
+ 		LogError("Error setting SRK public data, SRK key object may not exist");
+ 	}
+ 
+-	if ((result = add_mem_entry(tspContext, *prgbPubKey)))
++	if ((result = __tspi_add_mem_entry(tspContext, *prgbPubKey)))
+ 		goto error;
+ 
+ 	return result;
+diff --git a/src/tspi/tspi_maint.c b/src/tspi/tspi_maint.c
+index f18a261..5576ed3 100644
+--- a/src/tspi/tspi_maint.c
++++ b/src/tspi/tspi_maint.c
+@@ -80,10 +80,10 @@ Tspi_TPM_CreateMaintenanceArchive(TSS_HTPM hTPM,			/* in */
+ 	if ((result = obj_policy_validate_auth_oiap(hOwnerPolicy, &digest, &ownerAuth)))
+ 		goto error1;
+ 
+-	if ((result = add_mem_entry(tspContext, *prgbRndNumber)))
++	if ((result = __tspi_add_mem_entry(tspContext, *prgbRndNumber)))
+ 		goto error1;
+ 
+-	if ((result = add_mem_entry(tspContext, *prgbArchiveData))) {
++	if ((result = __tspi_add_mem_entry(tspContext, *prgbArchiveData))) {
+ 		free_tspi(tspContext, *prgbRndNumber);
+ 		goto error2;
+ 	}
+diff --git a/src/tspi/tspi_migration.c b/src/tspi/tspi_migration.c
+index aca6411..83b73f4 100644
+--- a/src/tspi/tspi_migration.c
++++ b/src/tspi/tspi_migration.c
+@@ -133,7 +133,7 @@ Tspi_TPM_AuthorizeMigrationTicket(TSS_HTPM hTPM,			/* in */
+ 		return result;
+ 	}
+ 
+-	if ((result = add_mem_entry(tspContext, *prgbMigTicket))) {
++	if ((result = __tspi_add_mem_entry(tspContext, *prgbMigTicket))) {
+ 		*pulMigTicketLength = 0;
+ 		free(*prgbMigTicket);
+ 		return result;
+@@ -286,7 +286,7 @@ Tspi_Key_CreateMigrationBlob(TSS_HKEY hKeyToMigrate,		/* in */
+ 	LoadBlob_TSS_KEY(&offset, *prgbMigrationBlob, &tssKey);
+ 
+ 	if (randomSize) {
+-		if ((result = add_mem_entry(tspContext, random)))
++		if ((result = __tspi_add_mem_entry(tspContext, random)))
+ 			goto done;
+ 	}
+ 	*pulRandomLength = randomSize;
+diff --git a/src/tspi/tspi_ps.c b/src/tspi/tspi_ps.c
+index 9e83d73..a07e5d4 100644
+--- a/src/tspi/tspi_ps.c
++++ b/src/tspi/tspi_ps.c
+@@ -467,7 +467,7 @@ Tspi_Context_GetRegisteredKeysByUUID(TSS_HCONTEXT tspContext,		/* in */
+ 		free(tspHier);
+ 	}
+ 
+-	if ((result = add_mem_entry(tspContext, *ppKeyHierarchy))) {
++	if ((result = __tspi_add_mem_entry(tspContext, *ppKeyHierarchy))) {
+ 		free(*ppKeyHierarchy);
+ 		*ppKeyHierarchy = NULL;
+ 		*pulKeyHierarchySize = 0;
+@@ -544,7 +544,7 @@ Tspi_Context_GetRegisteredKeysByUUID2(TSS_HCONTEXT tspContext,		/* in */
+ 		free(tspHier);
+ 	}
+ 
+-	if ((result = add_mem_entry(tspContext, *ppKeyHierarchy))) {
++	if ((result = __tspi_add_mem_entry(tspContext, *ppKeyHierarchy))) {
+ 		free(*ppKeyHierarchy);
+ 		*ppKeyHierarchy = NULL;
+ 		*pulKeyHierarchySize = 0;
+diff --git a/src/tspi/tspi_quote2.c b/src/tspi/tspi_quote2.c
+index 1a13550..67d4dc1 100644
+--- a/src/tspi/tspi_quote2.c
++++ b/src/tspi/tspi_quote2.c
+@@ -226,7 +226,7 @@ Tspi_TPM_Quote2(TSS_HTPM        hTPM,            // in
+ 				free(*versionInfo);
+ 			return result;
+ 		}
+-		if ((result = rsa_verify(hIdentKey,TSS_HASH_SHA1,sizeof(digest.digest),
++		if ((result = __tspi_rsa_verify(hIdentKey,TSS_HASH_SHA1,sizeof(digest.digest),
+ 					 digest.digest, sigSize, sig))) {
+ 			free(sig);
+ 			if (*versionInfoSize > 0)
+@@ -265,7 +265,7 @@ Tspi_TPM_Quote2(TSS_HTPM        hTPM,            // in
+ 	if(*versionInfoSize > 0) {
+ 		if(fAddVersion) {
+ 			/* tag versionInfo so that it can be free'd by the app through Tspi_Context_FreeMemory */
+-			if ((result = add_mem_entry(tspContext, *versionInfo))) {
++			if ((result = __tspi_add_mem_entry(tspContext, *versionInfo))) {
+ 				free_tspi(tspContext, pValidationData->rgbValidationData);
+ 				pValidationData->rgbValidationData = NULL;
+ 				pValidationData->ulValidationDataLength = 0;
+diff --git a/src/tspi/tspi_random.c b/src/tspi/tspi_random.c
+index 0818dc6..9fe8c27 100644
+--- a/src/tspi/tspi_random.c
++++ b/src/tspi/tspi_random.c
+@@ -43,7 +43,7 @@ Tspi_TPM_GetRandom(TSS_HTPM hTPM,		/* in */
+ 						     prgbRandomData)))
+ 		return result;
+ 
+-	if ((result = add_mem_entry(tspContext, *prgbRandomData))) {
++	if ((result = __tspi_add_mem_entry(tspContext, *prgbRandomData))) {
+ 		free(*prgbRandomData);
+ 		*prgbRandomData = NULL;
+ 		return result;
+diff --git a/src/tspi/tspi_seal.c b/src/tspi/tspi_seal.c
+index 6a8955f..23350f7 100644
+--- a/src/tspi/tspi_seal.c
++++ b/src/tspi/tspi_seal.c
+@@ -314,7 +314,7 @@ Tspi_Data_Unseal(TSS_HENCDATA hEncData,		/* in */
+ 
+ 		free(maskedData);
+ 	} else {
+-		if ((result = add_mem_entry(tspContext, unSealedData)))
++		if ((result = __tspi_add_mem_entry(tspContext, unSealedData)))
+ 			goto error;
+ 	}
+ 
+diff --git a/src/tspi/tspi_selftest.c b/src/tspi/tspi_selftest.c
+index 325a593..2cd31d2 100644
+--- a/src/tspi/tspi_selftest.c
++++ b/src/tspi/tspi_selftest.c
+@@ -195,7 +195,7 @@ Tspi_TPM_GetTestResult(TSS_HTPM hTPM,			/* in */
+ 							 prgbTestResult)))
+ 		return result;
+ 
+-	if ((result = add_mem_entry(tspContext, *prgbTestResult))) {
++	if ((result = __tspi_add_mem_entry(tspContext, *prgbTestResult))) {
+ 		free(*prgbTestResult);
+ 		*prgbTestResult = NULL;
+ 		*pulTestResultLength = 0;
+diff --git a/src/tspi/tspi_sign.c b/src/tspi/tspi_sign.c
+index c9993e5..9880cf2 100644
+--- a/src/tspi/tspi_sign.c
++++ b/src/tspi/tspi_sign.c
+@@ -92,7 +92,7 @@ Tspi_Hash_Sign(TSS_HHASH hHash,			/* in */
+ 		}
+ 	}
+ 
+-	if ((result = add_mem_entry(tspContext, *prgbSignature)))
++	if ((result = __tspi_add_mem_entry(tspContext, *prgbSignature)))
+ 		free(*prgbSignature);
+ 
+ done:
+diff --git a/src/tspi/tspi_tick.c b/src/tspi/tspi_tick.c
+index 1897c8a..65ab07d 100644
+--- a/src/tspi/tspi_tick.c
++++ b/src/tspi/tspi_tick.c
+@@ -139,7 +139,7 @@ Tspi_Hash_TickStampBlob(TSS_HHASH       hHash,			/* in */
+ 	pValidationData->ulDataLength = signInfoLen;
+ 		
+ 	/* tag sig so that it can be free'd by the app through Tspi_Context_FreeMemory */
+-	if ((result = add_mem_entry(tspContext, sig))) {
++	if ((result = __tspi_add_mem_entry(tspContext, sig))) {
+ 		free_tspi(tspContext, signInfo);
+ 		free(sig);
+ 		return result;
+diff --git a/src/tspi/tspi_transport.c b/src/tspi/tspi_transport.c
+index 2756c32..bd956cd 100644
+--- a/src/tspi/tspi_transport.c
++++ b/src/tspi/tspi_transport.c
+@@ -90,7 +90,7 @@ Tspi_Context_CloseSignTransport(TSS_HCONTEXT    hContext,		/* in */
+ 	offset = 0;
+ 	if (pValidationData) {
+ 		/* tag the returned allocated memory as alloc'd by the TSP */
+-		if ((result = add_mem_entry(hContext, sig))) {
++		if ((result = __tspi_add_mem_entry(hContext, sig))) {
+ 			free(sig);
+ 			return TSPERR(TSS_E_INTERNAL_ERROR);
+ 		}
+@@ -112,7 +112,7 @@ Tspi_Context_CloseSignTransport(TSS_HCONTEXT    hContext,		/* in */
+ 		offset = 0;
+ 		Trspi_LoadBlob_SIGN_INFO(&offset, pValidationData->rgbData, &signInfo);
+ 	} else
+-		result = rsa_verify(hSigningKey, TSS_HASH_SHA1, sizeof(TPM_DIGEST), digest.digest,
++		result = __tspi_rsa_verify(hSigningKey, TSS_HASH_SHA1, sizeof(TPM_DIGEST), digest.digest,
+ 				    sigLen, sig);
+ 
+ 	return result;
