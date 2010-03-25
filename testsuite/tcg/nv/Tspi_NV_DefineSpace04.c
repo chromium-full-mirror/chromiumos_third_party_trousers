@@ -207,6 +207,10 @@ main_v1_2(char version)
        else{
 		print_error("Tspi_NV_DefineSpace", result);
 		print_end_test(nameOfFunction);
+       #ifdef CLEAR_TEST_INDEX
+                if ( result == TSS_SUCCESS )
+                        Tspi_NV_ReleaseSpace(hNVStore);
+       #endif
 		Tspi_Context_FreeMemory(hContext, NULL);
 		Tspi_Context_Close(hContext);
 		if ( result == TSS_SUCCESS )
