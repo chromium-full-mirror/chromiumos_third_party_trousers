@@ -83,11 +83,9 @@ ima_get_entries_by_pcr(FILE *handle, UINT32 pcr_index, UINT32 first,
 	struct event_wrapper *list = calloc(1, sizeof(struct event_wrapper));
 	struct event_wrapper *cur = list;
 	TSS_RESULT result = TCSERR(TSS_E_INTERNAL_ERROR);
-
-/* Changes for kernel IMA */
-FILE *fp = (FILE *) handle;
-int len;
-char name[255];
+	FILE *fp = (FILE *) handle;
+	uint len;
+	char name[255];
 
 	if (list == NULL) {
 		LogError("malloc of %zd bytes failed.", sizeof(struct event_wrapper));
@@ -129,14 +127,30 @@ char name[255];
 {
 		char digest[20];
 
-		fread(&len, sizeof len, 1, fp);
+		if (fread(&len, 1, sizeof(len), fp) != (sizeof(len))) {
+			LogError("Failed to read event log file");
+			result = TCSERR(TSS_E_INTERNAL_ERROR);
+			goto free_list;
+		}
+		
 		memset(name, 0, sizeof name);
-		fread(name, len, 1, fp);
-
-		fread(digest, sizeof digest, 1, fp);
+		if (fread(name, 1, len, fp) != len) {
+			LogError("Failed to read event log file");
+			result = TCSERR(TSS_E_INTERNAL_ERROR);
+			goto free_list;
+		}
+		if (fread(digest, 1, sizeof digest, fp) != (sizeof(digest))) {
+			LogError("Failed to read event log file");
+			result = TCSERR(TSS_E_INTERNAL_ERROR);
+			goto free_list;
+		}
 }
 		/* Get the template data namelen and data */
-		fread(&cur->event.ulEventLength, sizeof(int), 1, fp);
+		if (fread(&cur->event.ulEventLength, 1, sizeof(int), fp) != sizeof(int)) {
+			LogError("Failed to read event log file");
+			result = TCSERR(TSS_E_INTERNAL_ERROR);
+			goto free_list;
+		}
 		cur->event.rgbEvent = malloc(cur->event.ulEventLength + 1);
 		if (cur->event.rgbEvent == NULL) {
 			free(cur->event.rgbPcrValue);
@@ -146,7 +160,12 @@ char name[255];
 			goto free_list;
 		}
 		memset(cur->event.rgbEvent, 0, cur->event.ulEventLength);
-		fread(cur->event.rgbEvent, cur->event.ulEventLength, 1, fp);
+		if (fread(cur->event.rgbEvent, 1, cur->event.ulEventLength, fp) != cur->event.ulEventLength) {
+			free(cur->event.rgbPcrValue);
+			LogError("Failed to read event log file");
+			result = TCSERR(TSS_E_INTERNAL_ERROR);
+			goto free_list;
+		}
 
 		copied_events++;
 printf("%d %s ", copied_events, name);
@@ -206,15 +225,14 @@ free_list:
 TSS_RESULT
 ima_get_entry(FILE *handle, UINT32 pcr_index, UINT32 *num, TSS_PCR_EVENT **ppEvent)
 {
-	int pcr_value, ptr = 0, len;
+	int pcr_value, ptr = 0;
+	uint len;
 	char page[IMA_READ_SIZE];
 	UINT32 seen_indices = 0;
 	TSS_RESULT result = TCSERR(TSS_E_INTERNAL_ERROR);
-	TSS_PCR_EVENT *event;
+	TSS_PCR_EVENT *event = NULL;
 	FILE *fp = (FILE *) handle;
 	char name[255];
-printf("ima_get_entry \n");
-fflush(stdout);
 
 	rewind(fp);
 	while (fread(page, 24, 1, fp)) {
@@ -222,8 +240,6 @@ fflush(stdout);
 		ptr = 0;
 		memcpy(&pcr_value, &page[ptr], sizeof(int));
 
-printf("pcr_index %u\n", (UINT32)pcr_value);
-fflush(stdout);
 		if (pcr_index == (UINT32)pcr_value) {
 			event = calloc(1, sizeof(TSS_PCR_EVENT));
 			event->ulPcrIndex = pcr_value;
@@ -237,6 +253,7 @@ fflush(stdout);
 				event->rgbPcrValue = malloc(event->ulPcrValueLength);
 				if (event->rgbPcrValue == NULL) {
 					LogError("malloc of %d bytes failed.", 20);
+					free(event);
 					result = TCSERR(TSS_E_OUTOFMEMORY);
 					goto done;
 				}
@@ -249,39 +266,76 @@ fflush(stdout);
 				{
 					char digest[20];
 
-					fread(&len, sizeof len, 1, fp);
+					if (fread(&len, 1, sizeof(len), fp) != sizeof(len)) {
+						free(event);
+						LogError("Failed to read event log file");
+						result = TCSERR(TSS_E_INTERNAL_ERROR);
+						goto done;
+					}
 					memset(name, 0, sizeof name);
-					fread(name, len, 1, fp);
-					fread(digest, sizeof digest, 1, fp);
+					if (fread(name, 1, len, fp) != len) {
+						free(event);
+						LogError("Failed to read event log file");
+						result = TCSERR(TSS_E_INTERNAL_ERROR);
+						goto done;
+					}
+					if (fread(digest, 1, sizeof(digest), fp) != sizeof(digest)) {
+						free(event);
+						LogError("Failed to read event log file");
+						result = TCSERR(TSS_E_INTERNAL_ERROR);
+						goto done;
+					}
 				}
 				/* Get the template data namelen and data */
-				fread(&event->ulEventLength, sizeof(int), 1, fp);
+				if (fread(&event->ulEventLength, 1, sizeof(int), fp) != sizeof(int)) {
+					free(event);
+					LogError("Failed to read event log file");
+					result = TCSERR(TSS_E_INTERNAL_ERROR);
+					goto done;
+				}
 				event->rgbEvent = malloc(event->ulEventLength + 1);
 				if (event->rgbEvent == NULL) {
 					free(event->rgbPcrValue);
+					free(event);
 					LogError("malloc of %u bytes failed.",
 							event->ulEventLength);
 					result = TCSERR(TSS_E_OUTOFMEMORY);
-					free(event->rgbPcrValue);
-					event->rgbPcrValue = NULL;
 					goto done;
 				}
 				memset(event->rgbEvent, 0, event->ulEventLength);
-				fread(event->rgbEvent, event->ulEventLength, 1, fp);
+				if (fread(event->rgbEvent, 1, event->ulEventLength, fp) != event->ulEventLength ) {
+					free(event->rgbPcrValue);
+					free(event);
+					LogError("Failed to read event log file");
+					result = TCSERR(TSS_E_INTERNAL_ERROR);
+					goto done;
+				}
+				
 				*ppEvent = event;
 				result = TSS_SUCCESS;
 				break;
 			}
 		}
-		fread(&len, sizeof len, 1, fp);
+		if (fread(&len, 1, sizeof(len), fp) != sizeof(len)) {
+			free(event->rgbPcrValue);
+			free(event);
+			LogError("Failed to read event log file");
+			result = TCSERR(TSS_E_INTERNAL_ERROR);
+			goto done;
+		}
 		fseek(fp, len + 20, SEEK_CUR);
-		fread(&len, sizeof len, 1, fp);
+		if (fread(&len, 1, sizeof(len), fp) != sizeof(len)) {
+			free(event->rgbPcrValue);
+			free(event);
+			LogError("Failed to read event log file");
+			result = TCSERR(TSS_E_INTERNAL_ERROR);
+			goto done;
+		}
 		fseek(fp, len, SEEK_CUR);
 		seen_indices++;
 		printf("%d - index\n", seen_indices);
 	}
 done:
-fflush(stdout);
 	if (ppEvent == NULL)
 		*num = seen_indices;
 

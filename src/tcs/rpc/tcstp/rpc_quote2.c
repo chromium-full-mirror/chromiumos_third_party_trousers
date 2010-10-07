@@ -55,7 +55,7 @@ tcs_wrap_Quote2(struct tcsd_thread_data *data)
 	if (getData(TCSD_PACKET_TYPE_UINT32, 0, &hContext, 0, &data->comm))
 		return TCSERR(TSS_E_INTERNAL_ERROR);
 
-	LogDebugFn("thread %zd context %x", THREAD_ID, hContext);
+	LogDebugFn("thread %ld context %x", THREAD_ID, hContext);
 
 	if (getData(TCSD_PACKET_TYPE_UINT32, 1, &hKey, 0, &data->comm))
 		return TCSERR(TSS_E_INTERNAL_ERROR);
@@ -72,9 +72,10 @@ tcs_wrap_Quote2(struct tcsd_thread_data *data)
 		free(pcrDataIn);
 		return TCSERR(TSS_E_INTERNAL_ERROR);
 	}
-	if (getData(TCSD_PACKET_TYPE_BOOL,5,&addVersion, 0, &data->comm))
+	if (getData(TCSD_PACKET_TYPE_BOOL,5,&addVersion, 0, &data->comm)) {
+		free(pcrDataIn);
 		return TCSERR(TSS_E_INTERNAL_ERROR);
-	
+	}
 	result = getData(TCSD_PACKET_TYPE_AUTH, 6, &privAuth, 0, &data->comm);
 	if (result == TSS_TCP_RPC_BAD_PACKET_TYPE)
 		pPrivAuth = NULL;

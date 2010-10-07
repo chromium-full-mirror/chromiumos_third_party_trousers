@@ -45,7 +45,7 @@ tcsd_threads_final()
 	/* wait for all currently running threads to exit */
 	for (i = 0; i < tm->max_threads; i++) {
 		if (tm->thread_data[i].thread_id != THREAD_NULL) {
-			if ((rc = THREAD_JOIN(tm->thread_data[i].thread_id, NULL))) {
+			if ((rc = THREAD_JOIN(*(tm->thread_data[i].thread_id), NULL))) {
 				LogError("Thread join failed: error: %d", rc);
 			}
 		}
@@ -66,6 +66,8 @@ tcsd_threads_init(void)
 		LogError("malloc of %zd bytes failed.", sizeof(struct tcsd_thread_mgr));
 		return TCSERR(TSS_E_OUTOFMEMORY);
 	}
+	/* initialize mutex */
+	MUTEX_INIT(tm->lock);
 
 	/* set the max threads variable from config */
 	tm->max_threads = tcsd_options.num_threads;
@@ -86,26 +88,27 @@ tcsd_threads_init(void)
 TSS_RESULT
 tcsd_thread_create(int socket, char *hostname)
 {
-	UINT32 thread_num;
+	UINT32 thread_num = -1;
+	int rc = TCS_SUCCESS;
 #ifndef TCSD_SINGLE_THREAD_DEBUG
-	int rc;
 	THREAD_ATTR_DECLARE(tcsd_thread_attr);
 
 	/* init the thread attribute */
 	if ((rc = THREAD_ATTR_INIT(tcsd_thread_attr))) {
 		LogError("Initializing thread attribute failed: error=%d: %s", rc, strerror(rc));
-		return TCSERR(TSS_E_INTERNAL_ERROR);
+		rc = TCSERR(TSS_E_INTERNAL_ERROR);
+		goto out;
 	}
 	/* make all threads joinable */
 	if ((rc = THREAD_ATTR_SETJOINABLE(tcsd_thread_attr))) {
 		LogError("Making thread attribute joinable failed: error=%d: %s", rc, strerror(rc));
-		return TCSERR(TSS_E_INTERNAL_ERROR);
+		rc = TCSERR(TSS_E_INTERNAL_ERROR);
+		goto out;
 	}
 
 	MUTEX_LOCK(tm->lock);
 #endif
 	if (tm->num_active_threads == tm->max_threads) {
-		close(socket);
 		if (hostname != NULL) {
 			LogError("max number of connections reached (%d), new connection"
 				 " from %s refused.", tm->max_threads, hostname);
@@ -113,9 +116,12 @@ tcsd_thread_create(int socket, char *hostname)
 			LogError("max number of connections reached (%d), new connection"
 				 " refused.", tm->max_threads);
 		}
-		free(hostname);
-		MUTEX_UNLOCK(tm->lock);
-		return TCSERR(TSS_E_CONNECTION_FAILED);
+		rc = TCSERR(TSS_E_CONNECTION_FAILED);
+#ifndef TCSD_SINGLE_THREAD_DEBUG
+		goto out_unlock;
+#else
+		goto out;
+#endif
 	}
 
 	/* search for an open slot to store the thread data in */
@@ -134,20 +140,37 @@ tcsd_thread_create(int socket, char *hostname)
 #ifdef TCSD_SINGLE_THREAD_DEBUG
 	(void)tcsd_thread_run((void *)(&(tm->thread_data[thread_num])));
 #else
-	if ((rc = THREAD_CREATE(&(tm->thread_data[thread_num].thread_id),
+	tm->thread_data[thread_num].thread_id = calloc(1, sizeof(THREAD_TYPE));
+	if (tm->thread_data[thread_num].thread_id == NULL) {
+		rc = TCSERR(TSS_E_OUTOFMEMORY);
+		LogError("malloc of %zd bytes failed.", sizeof(THREAD_TYPE));
+		goto out_unlock;
+	}
+
+	if ((rc = THREAD_CREATE(tm->thread_data[thread_num].thread_id,
 				 &tcsd_thread_attr,
 				 tcsd_thread_run,
 				 (void *)(&(tm->thread_data[thread_num]))))) {
 		LogError("Thread create failed: %d", rc);
-		MUTEX_UNLOCK(tm->lock);
-		return TCSERR(TSS_E_INTERNAL_ERROR);
+		rc = TCSERR(TSS_E_INTERNAL_ERROR);
+		goto out_unlock;
 	}
 
 	tm->num_active_threads++;
 
+out_unlock:
 	MUTEX_UNLOCK(tm->lock);
 #endif
-	return TSS_SUCCESS;
+out:
+	/* cleanup in case of error */
+	if (rc != TCS_SUCCESS) {
+		if (hostname != NULL) {
+			tm->thread_data[thread_num].hostname = NULL;
+			free(hostname);
+		}
+		close(socket);
+	}
+	return rc;
 }
 
 /* Since we don't want any of the worker threads to catch any signals, we must mask off any
@@ -162,13 +185,13 @@ thread_signal_init()
 
 	if ((rc = sigfillset(&thread_sigmask))) {
 		LogError("sigfillset failed: error=%d: %s", rc, strerror(rc));
-		LogError("worker thread %zd is exiting prematurely", THREAD_ID);
+		LogError("worker thread %ld is exiting prematurely", THREAD_ID);
 		THREAD_EXIT(NULL);
 	}
 
 	if ((rc = THREAD_SET_SIGNAL_MASK(SIG_BLOCK, &thread_sigmask, NULL))) {
 		LogError("Setting thread sigmask failed: error=%d: %s", rc, strerror(rc));
-		LogError("worker thread %zd is exiting prematurely", THREAD_ID);
+		LogError("worker thread %ld is exiting prematurely", THREAD_ID);
 		THREAD_EXIT(NULL);
 	}
 }
@@ -290,7 +313,7 @@ done:
 	/* if we're not in shutdown mode, then nobody is waiting to join this thread, so
 	 * detach it so that its resources are free at THREAD_EXIT() time. */
 	if (!tm->shutdown) {
-		if ((rc = THREAD_DETACH(data->thread_id))) {
+		if ((rc = THREAD_DETACH(*(data->thread_id)))) {
 			LogError("Thread detach failed (errno %d)."
 				 " Resources may not be properly released.", rc);
 		}
@@ -389,7 +412,7 @@ tcsd_thread_run(void *v)
 
 		/* check for shutdown */
 		if (tm->shutdown) {
-			LogDebug("Thread %zd exiting via shutdown signal!", THREAD_ID);
+			LogDebug("Thread %ld exiting via shutdown signal!", THREAD_ID);
 			break;
 		}
 	}
@@ -407,6 +430,10 @@ tcsd_thread_run(void *v)
 		TCS_CloseContext_Internal(data->context);
 		data->context = NULL_TCS_HANDLE;
 	}
+	if(data->hostname != NULL) {
+		free(data->hostname);
+		data->hostname = NULL;
+	}
 
 #ifndef TCSD_SINGLE_THREAD_DEBUG
 	pthread_mutex_lock(&(tm->lock));
@@ -414,14 +441,13 @@ tcsd_thread_run(void *v)
 	/* if we're not in shutdown mode, then nobody is waiting to join this thread, so
 	 * detach it so that its resources are free at pthread_exit() time. */
 	if (!tm->shutdown) {
-		if ((rc = pthread_detach(data->thread_id))) {
+		if ((rc = pthread_detach(*(data->thread_id)))) {
 			LogError("pthread_detach failed (errno %d)."
 				 " Resources may not be properly released.", rc);
 		}
 	}
-	free(data->hostname);
-	data->hostname = NULL;
-	data->thread_id = (pthread_t)0;
+	free(data->thread_id);
+	data->thread_id = THREAD_NULL;
 	pthread_mutex_unlock(&(tm->lock));
 	pthread_exit(NULL);
 #else

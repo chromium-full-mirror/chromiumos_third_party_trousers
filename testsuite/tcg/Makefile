@@ -21,11 +21,8 @@
 SUBDIRS = common
 SUBDIRS += `ls */Makefile | sed "s/Makefile//g" | sed "s/common\///g"`
 
-LDFLAGS += -L/usr/local/lib -ltspi -lssl -lcrypto -lpthread
-
 all:
-	@set -e; for i in $(SUBDIRS); do $(MAKE) LDFLAGS="$(LDFLAGS)" \
-	-C $$i ; done
+	@set -e; for i in $(SUBDIRS); do $(MAKE) -C $$i ; done
 
 install:
 	@set -e; for i in $(SUBDIRS); do $(MAKE) -C $$i install ; done

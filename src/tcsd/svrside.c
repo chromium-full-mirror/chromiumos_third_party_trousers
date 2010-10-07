@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <pwd.h>
 #if (defined (__OpenBSD__) || defined (__FreeBSD__))
 #include <netinet/in.h>
 #endif
@@ -40,9 +41,11 @@
 
 struct tcsd_config tcsd_options;
 struct tpm_properties tpm_metrics;
+static volatile int hup = 0, term = 0;
+extern char *optarg;
 
-void
-tcsd_shutdown()
+static void
+tcsd_shutdown(void)
 {
 	/* order is important here:
 	 * allow all threads to complete their current request */
@@ -54,44 +57,27 @@ tcsd_shutdown()
 	EVENT_LOG_final();
 }
 
-void
-tcsd_signal_int(int signal)
+static void
+tcsd_signal_term(int signal)
 {
-	switch (signal) {
-		case SIGINT:
-			LogInfo("Caught SIGINT. Cleaning up and exiting.");
-			break;
-		case SIGHUP:
-			LogInfo("Caught SIGHUP. Cleaning up and exiting.");
-			break;
-		default:
-			LogError("Caught signal %d (which I didn't register for!)."
-					" Ignoring.", signal);
-			break;
-	}
-	tcsd_shutdown();
-	exit(signal);
+	term = 1;
 }
 
 void
-tcsd_signal_chld(int signal)
+tcsd_signal_hup(int signal)
 {
-	/* kill zombies */
-	wait3(NULL, WNOHANG, NULL);
+	hup = 1;
 }
 
-TSS_RESULT
-signals_init()
+static TSS_RESULT
+signals_init(void)
 {
 	int rc;
 	sigset_t sigmask;
+	struct sigaction sa;
 
 	sigemptyset(&sigmask);
-	if ((rc = sigaddset(&sigmask, SIGCHLD))) {
-		LogError("sigaddset: %s", strerror(errno));
-		return TCSERR(TSS_E_INTERNAL_ERROR);
-	}
-	if ((rc = sigaddset(&sigmask, SIGINT))) {
+	if ((rc = sigaddset(&sigmask, SIGTERM))) {
 		LogError("sigaddset: %s", strerror(errno));
 		return TCSERR(TSS_E_INTERNAL_ERROR);
 	}
@@ -105,30 +91,25 @@ signals_init()
 		return TCSERR(TSS_E_INTERNAL_ERROR);
 	}
 
-	tcsd_sa_int.sa_handler = tcsd_signal_int;
-	tcsd_sa_chld.sa_handler = tcsd_signal_chld;
-	tcsd_sa_chld.sa_flags = SA_RESTART;
-
-	if ((rc = sigaction(SIGINT, &tcsd_sa_int, NULL))) {
-		LogError("signal SIGINT not registered: %s", strerror(errno));
+	sa.sa_flags = 0;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_handler = tcsd_signal_term;
+	if ((rc = sigaction(SIGTERM, &sa, NULL))) {
+		LogError("signal SIGTERM not registered: %s", strerror(errno));
 		return TCSERR(TSS_E_INTERNAL_ERROR);
 	}
 
-	if ((rc = sigaction(SIGHUP, &tcsd_sa_int, NULL))) {
+	sa.sa_handler = tcsd_signal_hup;	
+	if ((rc = sigaction(SIGHUP, &sa, NULL))) {
 		LogError("signal SIGHUP not registered: %s", strerror(errno));
-		return TCSERR(TSS_E_INTERNAL_ERROR);
-	}
-
-	if ((rc = sigaction(SIGCHLD, &tcsd_sa_chld, NULL))) {
-		LogError("signal SIGCHLD not registered: %s", strerror(errno));
 		return TCSERR(TSS_E_INTERNAL_ERROR);
 	}
 
 	return TSS_SUCCESS;
 }
 
-TSS_RESULT
-tcsd_startup()
+static TSS_RESULT
+tcsd_startup(void)
 {
 	TSS_RESULT result;
 
@@ -202,15 +183,30 @@ tcsd_startup()
 	return TSS_SUCCESS;
 }
 
+
 void
 usage(void)
 {
 	fprintf(stderr, "\tusage: tcsd [-f] [-h]\n\n");
 	fprintf(stderr, "\t-f|--foreground\trun in the foreground. Logging goes to stderr "
 			"instead of syslog.\n");
+	fprintf(stderr, "\t-e| attempts to connect to software TPMs over TCP");
 	fprintf(stderr, "\t-h|--help\tdisplay this help message\n");
 	fprintf(stderr, "\n");
 }
+
+static TSS_RESULT
+reload_config(void)
+{
+	TSS_RESULT result;
+	hup = 0;
+
+	// FIXME: reload the config - work in progress
+	result = TSS_SUCCESS;
+
+	return result;
+}
+
 
 int
 main(int argc, char **argv)
@@ -220,6 +216,7 @@ main(int argc, char **argv)
 	int sd, newsd, c, option_index = 0;
 	unsigned client_len;
 	char *hostname = NULL;
+	struct passwd *pwd;
 	struct hostent *client_hostent = NULL;
 	struct option long_options[] = {
 		{"help", 0, NULL, 'h'},
@@ -227,13 +224,17 @@ main(int argc, char **argv)
 		{0, 0, 0, 0}
 	};
 
-	while ((c = getopt_long(argc, argv, "fh", long_options, &option_index)) != -1) {
+	unsetenv("TCSD_USE_TCP_DEVICE");
+	while ((c = getopt_long(argc, argv, "fhe", long_options, &option_index)) != -1) {
 		switch (c) {
 			case 'f':
 				setenv("TCSD_FOREGROUND", "1", 1);
 				break;
 			case 'h':
 				/* fall through */
+			case 'e':
+				setenv("TCSD_USE_TCP_DEVICE", "1", 1);
+				break;
 			default:
 				usage();
 				return -1;
@@ -243,14 +244,6 @@ main(int argc, char **argv)
 
 	if ((result = tcsd_startup()))
 		return (int)result;
-
-	if (getenv("TCSD_FOREGROUND") == NULL) {
-		if (daemon(0, 0) == -1) {
-			perror("daemon");
-			tcsd_shutdown();
-			return -1;
-		}
-	}
 
 	sd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sd < 0) {
@@ -275,19 +268,51 @@ main(int argc, char **argv)
 		LogError("Failed bind: %s", strerror(errno));
 		return -1;
 	}
+#ifndef SOLARIS
+	pwd = getpwnam(TSS_USER_NAME);
+	if (pwd == NULL) {
+		if (errno == 0) {
+			LogError("User \"%s\" not found, please add this user"
+					" manually.", TSS_USER_NAME);
+		} else {
+			LogError("getpwnam(%s): %s", TSS_USER_NAME, strerror(errno));
+		}
+		return TCSERR(TSS_E_INTERNAL_ERROR);
+	}
+	setuid(pwd->pw_uid);
+#endif
 	if (listen(sd, TCSD_MAX_SOCKETS_QUEUED) < 0) {
 		LogError("Failed listen: %s", strerror(errno));
 		return -1;
 	}
 	client_len = (unsigned)sizeof(client_addr);
+	
+	if (getenv("TCSD_FOREGROUND") == NULL) {
+		if (daemon(0, 0) == -1) {
+			perror("daemon");
+			tcsd_shutdown();
+			return -1;
+		}
+	}
+
 	LogInfo("%s: TCSD up and running.", PACKAGE_STRING);
 	do {
 		newsd = accept(sd, (struct sockaddr *) &client_addr, &client_len);
-		LogDebug("accepted socket %i", newsd);
 		if (newsd < 0) {
-			LogError("Failed accept: %s", strerror(errno));
-			break;
+			if (errno == EINTR) {
+				if (term)
+					break;
+				else if (hup) {
+					if (reload_config() != TSS_SUCCESS)
+						LogError("Failed reloading config");
+				}
+				continue;
+			} else {
+				LogError("Failed accept: %s", strerror(errno));
+				continue;
+			}
 		}
+		LogDebug("accepted socket %i", newsd);
 
 		if ((client_hostent = gethostbyaddr((char *) &client_addr.sin_addr,
 						    sizeof(client_addr.sin_addr),
@@ -307,8 +332,12 @@ main(int argc, char **argv)
 
 		tcsd_thread_create(newsd, hostname);
 		hostname = NULL;
-	} while (1);
+		if (hup) {
+			if (reload_config() != TSS_SUCCESS)
+				LogError("Failed reloading config");
+		}
+	} while (term ==0);
 
-	/* To close correctly, we must recieve a SIGHUP */
-	return -1;
+	/* To close correctly, we must receive a SIGTERM */
+	return 0;
 }

@@ -717,7 +717,7 @@ conf_file_init(struct tcsd_config *conf)
 
 #ifdef SOLARIS
        /*
-	* Solaris runs as root:sys but with reduced privileges
+	* Solaris runs as Rajiv Andrade <srajiv@linux.vnet.:sys but with reduced privileges
 	* so we don't need to create a new user/group and also so
 	* we can have auditing support.  The permissions on
 	* the tcsd configuration file are not checked on Solaris.

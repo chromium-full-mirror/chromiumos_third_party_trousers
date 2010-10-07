@@ -187,7 +187,11 @@ obj_context_get_machine_name(TSS_HCONTEXT tspContext, UINT32 *size, BYTE **data)
 		*data = NULL;
 		*size = 0;
 	} else {
-		*data = calloc_tspi(obj->tspContext, context->machineNameLength);
+		/*
+		 * Don't use calloc_tspi because this memory is
+		 * not freed using "free_tspi"
+		 */
+		*data = calloc(1, context->machineNameLength);
 		if (*data == NULL) {
 			LogError("malloc of %u bytes failed.",
 					context->machineNameLength);
@@ -963,6 +967,7 @@ do_transport_decryption(TPM_TRANSPORT_PUBLIC *transPub,
 	default:
 		LogDebug("Unknown algorithm for encrypted transport session: 0x%x",
 			 transPub->algId);
+		free(dec);
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	}
 
@@ -1042,6 +1047,7 @@ do_transport_encryption(TPM_TRANSPORT_PUBLIC *transPub,
 	default:
 		LogDebug("Unknown algorithm for encrypted transport session: 0x%x",
 			 transPub->algId);
+		free(enc);
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	}
 
