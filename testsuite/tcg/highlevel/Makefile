@@ -28,7 +28,7 @@ else
 endif
 ALL = $(shell ls *.c | sed "s/\.c//g")
 SUBDIRS = `ls */Makefile | sed "s/Makefile//g"`
-LIBS = ../common/common.o $(LDFLAGS)
+LIBS = ../common/common.o -ltspi $(LDFLAGS)
 CFLAGS += -g -I../include
 
 .c:
