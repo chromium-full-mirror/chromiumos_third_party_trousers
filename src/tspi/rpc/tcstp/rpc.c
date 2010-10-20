@@ -13,6 +13,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -31,7 +32,6 @@
 #include "tcsd_wrap.h"
 #include "obj.h"
 #include "rpc_tcstp_tsp.h"
-
 
 void
 initData(struct tcsd_comm_data *comm, int parm_count)
@@ -345,10 +345,9 @@ send_init(struct host_table_entry *hte)
 	BYTE *buffer;
 	TSS_RESULT result;
 
-	struct sockaddr_in addr;
-	struct hostent *hEnt = NULL;
+	struct sockaddr_un addr;
 
-	sd = socket(PF_INET, SOCK_STREAM, 0);
+	sd = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (sd == -1) {
 		LogError("socket: %s", strerror(errno));
 		result = TSPERR(TSS_E_COMM_FAILURE);
@@ -356,27 +355,11 @@ send_init(struct host_table_entry *hte)
 	}
 
 	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(get_port());
+	addr.sun_family = AF_UNIX;
+	strcpy(addr.sun_path, TCSD_UNIX_SOCKET);
 
-	LogDebug("Sending TSP packet to host %s.", hte->hostname);
-
-	/* try to resolve by hostname first */
-	hEnt = gethostbyname((char *)hte->hostname);
-	if (hEnt == NULL) {
-		/* if by hostname fails, try by dot notation */
-		if (inet_aton((char *)hte->hostname, &addr.sin_addr) == 0) {
-			LogError("hostname %s does not resolve to a valid address.", hte->hostname);
-			result = TSPERR(TSS_E_CONNECTION_FAILED);
-			goto err_exit;
-		}
-	} else {
-		memcpy(&addr.sin_addr, hEnt->h_addr_list[0], 4);
-	}
-
-	LogDebug("Connecting to %s", inet_ntoa(addr.sin_addr));
-
-	if (connect(sd, (struct sockaddr *) &addr, sizeof (addr))) {
+	if (connect(sd, (struct sockaddr *) &addr,
+                    strlen(addr.sun_path) + sizeof (addr.sun_family))) {
 		LogError("connect: %s", strerror(errno));
 		result = TSPERR(TSS_E_COMM_FAILURE);
 		goto err_exit;
@@ -511,4 +494,3 @@ get_port(void)
 
 	return (short)port;
 }
-

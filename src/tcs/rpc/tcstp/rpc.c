@@ -516,50 +516,8 @@ DispatchTable tcs_func_table[TCSD_MAX_NUM_ORDS] = {
 int
 access_control(struct tcsd_thread_data *thread_data)
 {
-	int i = 0;
-	struct hostent *local_hostent = NULL;
-	static char *localhostname = NULL;
-	static int localhostname_len = 0;
-
-	if (!localhostname) {
-		if ((local_hostent = gethostbyname("localhost")) == NULL) {
-			LogError("Error resolving localhost: %s", hstrerror(h_errno));
-			return 1;
-		}
-
-		LogDebugFn("Cached local hostent:");
-		LogDebugFn("h_name: %s", local_hostent->h_name);
-		for (i = 0; local_hostent->h_aliases[i]; i++) {
-			LogDebugFn("h_aliases[%d]: %s", i, local_hostent->h_aliases[i]);
-		}
-		LogDebugFn("h_addrtype: %s",
-			   (local_hostent->h_addrtype == AF_INET6 ? "AF_INET6" : "AF_INET"));
-
-		localhostname_len = strlen(local_hostent->h_name);
-		if ((localhostname = strdup(local_hostent->h_name)) == NULL) {
-			LogError("malloc of %d bytes failed.", localhostname_len);
-			return TCSERR(TSS_E_OUTOFMEMORY);
-		}
-	}
-
-	/* if the request comes from localhost, or is in the accepted ops list,
-	 * approve it */
-	if (!strncmp(thread_data->hostname, localhostname,
-		     MIN((size_t)localhostname_len, strlen(thread_data->hostname)))) {
-		return 0;
-	} else {
-		while (tcsd_options.remote_ops[i]) {
-			if ((UINT32)tcsd_options.remote_ops[i] == thread_data->comm.hdr.u.ordinal) {
-				LogInfo("Accepted %s operation from %s",
-					tcs_func_table[thread_data->comm.hdr.u.ordinal].name,
-					thread_data->hostname);
-				return 0;
-			}
-			i++;
-		}
-	}
-
-	return 1;
+	// Unix domain socket, so just allow
+	return 0;
 }
 
 TSS_RESULT

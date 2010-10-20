@@ -19,6 +19,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netdb.h>
 #include <pwd.h>
 #if (defined (__OpenBSD__) || defined (__FreeBSD__))
@@ -211,11 +212,10 @@ reload_config(void)
 int
 main(int argc, char **argv)
 {
-	struct sockaddr_in serv_addr, client_addr;
+	struct sockaddr_un serv_addr, client_addr;
 	TSS_RESULT result;
 	int sd, newsd, c, option_index = 0;
 	unsigned client_len;
-	char *hostname = NULL;
 	struct passwd *pwd;
 	struct hostent *client_hostent = NULL;
 	struct option long_options[] = {
@@ -245,29 +245,27 @@ main(int argc, char **argv)
 	if ((result = tcsd_startup()))
 		return (int)result;
 
-	sd = socket(AF_INET, SOCK_STREAM, 0);
+	sd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sd < 0) {
 		LogError("Failed socket: %s", strerror(errno));
 		return -1;
 	}
 
 	memset(&serv_addr, 0, sizeof (serv_addr));
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_port = htons(tcsd_options.port);
-
-	/* If no remote_ops are defined, restrict connections to localhost
-	 * only at the socket. */
-	if (tcsd_options.remote_ops[0] == 0)
-		serv_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-	else
-		serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	serv_addr.sun_family = AF_UNIX;
+	strcpy(serv_addr.sun_path, TCSD_UNIX_SOCKET);
+        unlink(serv_addr.sun_path);
 
 	c = 1;
 	setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &c, sizeof(c));
-	if (bind(sd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)) < 0) {
+	if (bind(sd, (struct sockaddr *) &serv_addr,
+                 strlen(serv_addr.sun_path) + sizeof (serv_addr.sun_family))
+            < 0) {
 		LogError("Failed bind: %s", strerror(errno));
 		return -1;
 	}
+        chmod(serv_addr.sun_path,
+              S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 #ifndef SOLARIS
 	pwd = getpwnam(TSS_USER_NAME);
 	if (pwd == NULL) {
@@ -314,24 +312,8 @@ main(int argc, char **argv)
 		}
 		LogDebug("accepted socket %i", newsd);
 
-		if ((client_hostent = gethostbyaddr((char *) &client_addr.sin_addr,
-						    sizeof(client_addr.sin_addr),
-						    AF_INET)) == NULL) {
-			char buf[16];
-                        uint32_t addr = htonl(client_addr.sin_addr.s_addr);
-
-                        snprintf(buf, 16, "%d.%d.%d.%d", (addr & 0xff000000) >> 24,
-                                 (addr & 0x00ff0000) >> 16, (addr & 0x0000ff00) >> 8,
-                                 addr & 0x000000ff);
-
-			LogWarn("Host name for connecting IP %s could not be resolved", buf);
-			hostname = strdup(buf);
-		} else {
-			hostname = strdup(client_hostent->h_name);
-		}
-
-		tcsd_thread_create(newsd, hostname);
-		hostname = NULL;
+                // We're listening on a domain socket, so just use "localhost"
+		tcsd_thread_create(newsd, strdup("localhost"));
 		if (hup) {
 			if (reload_config() != TSS_SUCCESS)
 				LogError("Failed reloading config");
