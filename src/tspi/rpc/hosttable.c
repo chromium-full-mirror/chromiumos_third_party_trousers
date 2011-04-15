@@ -158,6 +158,10 @@ get_table_entry(TSS_HCONTEXT tspContext)
 {
 	struct host_table_entry *index = NULL;
 
+	/* Avoid shutdown race in wpa_supplicant */
+	if (ht == NULL)
+		return NULL;
+
 	MUTEX_LOCK(ht->lock);
 
 	for (index = ht->entries; index; index = index->next) {
@@ -179,4 +183,3 @@ put_table_entry(struct host_table_entry *entry)
 	if (entry)
 		MUTEX_UNLOCK(entry->lock);
 }
-
