@@ -84,4 +84,25 @@ LogTCSERR(TSS_RESULT result, char *file, int line)
 	return (result | TSS_LAYER_TCS);
 }
 
+#elif defined (TSS_TRACE)
+void
+LogTPMERR(TSS_RESULT result, char *file, int line)
+{
+	LogInfo("%s %s %s:%d: 0x%x\n", "LOG_RETERR", "TPM", file, line, result);
+}
+
+TSS_RESULT
+LogTDDLERR(TSS_RESULT result, char *file, int line)
+{
+	LogInfo("%s %s %s:%d: 0x%x\n", "LOG_RETERR", APPID, file, line, result);
+	return (result | TSS_LAYER_TDDL);
+}
+
+TSS_RESULT
+LogTCSERR(TSS_RESULT result, char *file, int line)
+{
+	LogInfo("%s %s %s:%d: 0x%x\n", "LOG_RETERR", APPID, file, line, result);
+	return (result | TSS_LAYER_TCS);
+}
+
 #endif

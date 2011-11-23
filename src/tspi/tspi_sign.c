@@ -39,6 +39,7 @@ Tspi_Hash_Sign(TSS_HHASH hHash,			/* in */
 	BYTE *data;
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 	if (pulSignatureLength == NULL || prgbSignature == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -114,6 +115,7 @@ Tspi_Hash_VerifySignature(TSS_HHASH hHash,		/* in */
 	UINT32 sigScheme;
 	TSS_HCONTEXT tspContext;
 
+	LogTrace();
 	if (ulSignatureLength > 0 && rgbSignature == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 

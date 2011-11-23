@@ -41,6 +41,7 @@ Tspi_TPM_CreateEndorsementKey(TSS_HTPM hTPM,			/* in */
 	TCPA_PUBKEY pubEK;
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 	memset(&pubEK, 0, sizeof(TCPA_PUBKEY));
 	memset(&dummyKey, 0, sizeof(TSS_KEY));
 
@@ -149,6 +150,7 @@ Tspi_TPM_GetPubEndorsementKey(TSS_HTPM hTPM,			/* in */
 	TCPA_PUBKEY pubKey;
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 	memset(&pubKey, 0, sizeof(TCPA_PUBKEY));
 
 	if (phEndorsementPubKey == NULL)
@@ -281,6 +283,7 @@ Tspi_TPM_CreateRevocableEndorsementKey(TSS_HTPM hTPM,			/* in */
 	TPM_PUBKEY pubEK;
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 	memset(&pubEK, 0, sizeof(TPM_PUBKEY));
 	memset(&dummyKey, 0, sizeof(TSS_KEY));
 	memset(&eKResetAuth, 0xff, sizeof(eKResetAuth));
@@ -421,6 +424,7 @@ Tspi_TPM_RevokeEndorsementKey(TSS_HTPM hTPM,			/* in */
 	TPM_DIGEST eKResetAuth;
 	TSS_RESULT result;
 
+	LogTrace();
 	if ((result = obj_tpm_get_tsp_context(hTPM, &tspContext)))
 		return result;
 
@@ -435,4 +439,3 @@ Tspi_TPM_RevokeEndorsementKey(TSS_HTPM hTPM,			/* in */
 	return result;
 }
 #endif
-

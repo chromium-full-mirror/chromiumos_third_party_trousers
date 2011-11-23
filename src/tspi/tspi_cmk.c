@@ -33,6 +33,7 @@ Tspi_TPM_CMKSetRestrictions(TSS_HTPM         hTpm,		/* in */
 	TPM_AUTH ownerAuth;
 	TSS_RESULT result;
 
+	LogTrace();
 	if ((result = obj_tpm_get_tsp_context(hTpm, &hContext)))
 		return result;
 
@@ -79,6 +80,7 @@ Tspi_TPM_CMKApproveMA(TSS_HTPM     hTpm,	/* in */
 	TPM_AUTH ownerAuth;
 	TSS_RESULT result;
 
+	LogTrace();
 	if ((result = obj_tpm_get_tsp_context(hTpm, &hContext)))
 		return result;
 
@@ -139,6 +141,7 @@ Tspi_TPM_CMKCreateTicket(TSS_HTPM     hTpm,		/* in */
 	TPM_AUTH ownerAuth;
 	TSS_RESULT result;
 
+	LogTrace();
 	if ((result = obj_tpm_get_tsp_context(hTpm, &hContext)))
 		return result;
 
@@ -223,6 +226,7 @@ Tspi_Key_CMKCreateBlob(TSS_HKEY     hKeyToMigrate,	/* in */
 	UINT64 offset;
 	TSS_RESULT result;
 
+	LogTrace();
 	memset(&tssKey, 0, sizeof(tssKey));
 
 	if (!pulRandomLength || !prgbRandom)
@@ -395,6 +399,7 @@ Tspi_Key_CMKConvertMigration(TSS_HKEY     hKeyToMigrate,	/* in */
 	TPM_AUTH parentAuth, *pAuth;
 	TSS_RESULT result;
 
+	LogTrace();
 	if ((result = obj_rsakey_get_tsp_context(hKeyToMigrate, &hContext)))
 		return result;
 
@@ -472,4 +477,3 @@ done:
 
 	return result;
 }
-

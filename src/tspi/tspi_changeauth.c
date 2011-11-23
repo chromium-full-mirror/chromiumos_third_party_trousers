@@ -34,6 +34,7 @@ Tspi_ChangeAuth(TSS_HOBJECT hObjectToChange,	/* in */
 	TSS_RESULT result;
 	TSS_HCONTEXT tspContext;
 
+	LogTrace();
 	if ((result = obj_policy_get_tsp_context(hNewPolicy, &tspContext)))
 		return result;
 
@@ -431,4 +432,3 @@ Tspi_ChangeAuthAsym(TSS_HOBJECT hObjectToChange,	/* in */
 	return TSPERR(TSS_E_NOTIMPL);
 #endif
 }
-

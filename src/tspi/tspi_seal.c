@@ -48,6 +48,7 @@ Tspi_Data_Seal(TSS_HENCDATA hEncData,	/* in */
 	UINT32 protectMode;
 #endif
 
+	LogTrace();
 	if (rgbDataToSeal == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -204,6 +205,7 @@ Tspi_Data_Unseal(TSS_HENCDATA hEncData,		/* in */
 	Trspi_HashCtx hashCtx;
 	struct authsess *xsap = NULL;
 
+	LogTrace();
 	if (pulUnsealedDataLength == NULL || prgbUnsealedData == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 

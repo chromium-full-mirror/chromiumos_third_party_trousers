@@ -74,6 +74,7 @@ Tspi_TPM_CollateIdentityRequest(TSS_HTPM hTPM,				/* in */
 	BYTE *tempCred = NULL;
 	struct authsess *xsap = NULL;
 
+	LogTrace();
 	if (pulTcpaIdentityReqLength == NULL || prgbTcpaIdentityReq == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -428,6 +429,7 @@ Tspi_TPM_ActivateIdentity(TSS_HTPM hTPM,			/* in */
 	Trspi_HashCtx hashCtx;
 	TPM_SYM_CA_ATTESTATION symCAAttestation;
 
+	LogTrace();
 	if (pulCredentialLength == NULL || prgbCredential == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 

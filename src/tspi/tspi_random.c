@@ -30,6 +30,7 @@ Tspi_TPM_GetRandom(TSS_HTPM hTPM,		/* in */
 	TSS_HCONTEXT tspContext;
 	TSS_RESULT result;
 
+	LogTrace();
 	if (prgbRandomData == NULL || ulRandomDataLength > 4096)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -60,6 +61,7 @@ Tspi_TPM_StirRandom(TSS_HTPM hTPM,		/* in */
 	TSS_RESULT result;
 	TSS_HCONTEXT tspContext;
 
+	LogTrace();
 	if (ulEntropyDataLength > 0 && rgbEntropyData == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 

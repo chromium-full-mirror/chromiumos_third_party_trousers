@@ -72,6 +72,21 @@ TSS_RESULT LogTCSERR(TSS_RESULT, char *, int);
 TSS_RESULT LogTDDLERR(TSS_RESULT, char *, int);
 void       LogTPMERR(TSS_RESULT, char *, int);
 
+#elif defined (TSS_TRACE)
+#include <syslog.h>
+#define LogDebug(fmt, ...)
+#define LogDebugFn(fmt, ...)
+#define LogBlob(sz,blb)
+#define LogDebugKey(s)
+#define LogDebugUnrollKey(b)
+#define LogError(fmt, ...) syslog(LOG_ERR, "TSS: " fmt, ##__VA_ARGS__)
+#define LogWarn(fmt, ...) syslog(LOG_WARNING, "TSS: " fmt, ##__VA_ARGS__)
+#define LogInfo(fmt, ...) syslog(LOG_INFO, "TSS: " fmt, ##__VA_ARGS__)
+#define LogTrace() syslog(LOG_INFO, "TSS: %s", __FUNCTION__)
+/* Return Value logging */
+TSS_RESULT LogTCSERR(TSS_RESULT, char *, int);
+TSS_RESULT LogTDDLERR(TSS_RESULT, char *, int);
+void       LogTPMERR(TSS_RESULT, char *, int);
 #else
 #define LogDebug(fmt, ...)
 #define LogDebugFn(fmt, ...)

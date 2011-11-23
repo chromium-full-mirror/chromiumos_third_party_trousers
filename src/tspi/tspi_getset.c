@@ -34,6 +34,7 @@ Tspi_SetAttribUint32(TSS_HOBJECT hObject,	/* in */
 {
 	TSS_RESULT result;
 
+	LogTrace();
 	if (obj_is_rsakey(hObject)) {
 #ifdef TSS_BUILD_RSAKEY_LIST
 		if (attribFlag == TSS_TSPATTRIB_KEY_REGISTER) {
@@ -306,6 +307,7 @@ Tspi_GetAttribUint32(TSS_HOBJECT hObject,	/* in */
 	UINT32 attrib;
 	TSS_RESULT result = TSS_SUCCESS;
 
+	LogTrace();
 	if (pulAttrib == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -658,6 +660,7 @@ Tspi_SetAttribData(TSS_HOBJECT hObject,		/* in */
 	TSS_RESULT result;
 	BYTE *string = NULL;
 
+	LogTrace();
 	if (obj_is_rsakey(hObject)) {
 #ifdef TSS_BUILD_RSAKEY_LIST
 		if (attribFlag == TSS_TSPATTRIB_KEY_BLOB) {
@@ -873,6 +876,7 @@ Tspi_GetAttribData(TSS_HOBJECT hObject,		/* in */
 {
 	TSS_RESULT result;
 
+	LogTrace();
 	if (pulAttribDataSize == NULL || prgbAttribData == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -1165,4 +1169,3 @@ Tspi_GetAttribData(TSS_HOBJECT hObject,		/* in */
 
 	return result;
 }
-

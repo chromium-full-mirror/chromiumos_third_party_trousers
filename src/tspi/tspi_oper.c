@@ -30,6 +30,7 @@ Tspi_TPM_SetOperatorAuth(TSS_HTPM    hTpm,		/* in */
 	TCPA_SECRET operatorAuth;
 	TSS_RESULT result = TSS_SUCCESS;
 
+	LogTrace();
 	if ((result = obj_tpm_get_tsp_context(hTpm, &tspContext)))
 		return result;
 

@@ -139,6 +139,7 @@ Tspi_TPM_DAA_JoinInit(TSS_HTPM                 hTPM,                          /*
 	int before = mallinfo().uordblks;
 #endif
 
+	LogTrace();
 	if (!capitalUprimeLength || !capitalUprime || !identityProof || !joinSessionLength ||
 	    !joinSession)
 		return TSPERR(TSS_E_BAD_PARAMETER);
@@ -249,6 +250,7 @@ Tspi_DAA_Issuer_GenerateKey(TSS_HDAA_ISSUER_KEY hIssuerKey,           // in
 	int before = mallinfo().uordblks;
 #endif
 
+	LogTrace();
 	if ((result = obj_daaissuerkey_get_tsp_context(hIssuerKey, &tspContext)))
 		return result;
 
@@ -314,6 +316,7 @@ Tspi_DAA_IssueInit(TSS_HDAA                      hDAA,                          
 	int before = mallinfo().uordblks;
 #endif
 
+	LogTrace();
 	LogDebug("Tspi_DAA_IssueInit_internal hDAA=%d daaCounter=%d", (int)hDAA, (int)daaCounter);
 	result = Tspi_DAA_IssueInit_internal(
 		hDAA,			// in
@@ -358,6 +361,7 @@ Tspi_DAA_IssuerKeyVerification(TSS_HDAA          hDAA,		// in
 	int before = mallinfo().uordblks;
 #endif
 
+	LogTrace();
 	LogDebug("TSPI_DAA_IssuerKeyVerification hDAA=%ld issuerPk=%ld issuerPkProof=%ld",
 		(long)hDAA, (long)issuerPk, (long)issuerPkProof);
 	TSS_DAA_PK_internal *pk_internal = e_2_i_TSS_DAA_PK( (TSS_DAA_PK *)issuerPk);
@@ -393,6 +397,7 @@ Tspi_DAA_IssueCredential(TSS_HDAA                      hDAA,			// in
 	int before = mallinfo().uordblks;
 #endif
 
+	LogTrace();
 	LogDebug("Tspi_DAA_IssueCredential hDAA=%d attributesIssuerLength=%d",
 		(int)hDAA,
 		(int)attributesIssuerLength);
@@ -430,6 +435,7 @@ Tspi_DAA_VerifyInit(TSS_HDAA hDAA,			// in
 	int before = mallinfo().uordblks;
 #endif
 
+	LogTrace();
 	// TODO which interface to use ? with or without baseName ?
 	LogDebug("Tspi_DAA_VerifyInit hDAA=%d", (int)hDAA);
 	result = Tspi_DAA_VerifyInit_internal( hDAA,
@@ -469,6 +475,7 @@ Tspi_DAA_VerifySignature(TSS_HDAA           hDAA,		// in
 	int before = mallinfo().uordblks;
 #endif
 
+	LogTrace();
 	LogDebug("Tspi_DAA_VerifySignature hDAA=%d", (int)hDAA);
 	result = Tspi_DAA_VerifySignature_internal( hDAA,
 						daaSignature,
@@ -512,6 +519,7 @@ Tspi_DAA_RevokeSetup(TSS_HDAA       hDAA,		// in
 	int before = mallinfo().uordblks;
 #endif
 
+	LogTrace();
 	result = Tspi_DAA_RevokeSetup_internal(
 		hDAA,			// in
 //TODO: remove cast when the above interface is changed
@@ -557,6 +565,7 @@ Tspi_DAA_ARDecrypt(TSS_HDAA                     hDAA,			// in
 	int before = mallinfo().uordblks;
 #endif
 
+	LogTrace();
 	result = Tspi_DAA_ARDecrypt_internal(
 		hDAA,			// in
 		encryptedPseudonym,	// in
@@ -596,6 +605,7 @@ Tspi_TPM_DAA_JoinCreateDaaPubKey(TSS_HDAA                     hDAA,	            
 	int before = mallinfo().uordblks;
 #endif
 
+	LogTrace();
 	LogDebug("Tspi_TPM_DAA_JoinCreateDaaPubKey hDAA=%d joinSession=%d",
 			(int)hDAA, (int)joinSession);
 	result = Tspi_TPM_DAA_JoinCreateDaaPubKey_internal(
@@ -634,6 +644,7 @@ Tspi_TPM_DAA_JoinStoreCredential(TSS_HDAA              hDAA,		// in
 	int before = mallinfo().uordblks;
 #endif
 
+	LogTrace();
 	LogDebug("Tspi_TPM_DAA_JoinStoreCredential hDAA=%d credIssuer=%d joinSession=%d",
 		(int)hDAA, (int)&credIssuer, (int)&joinSession);
 	result = Tspi_TPM_DAA_JoinStoreCredential_internal(hDAA,
@@ -677,6 +688,7 @@ Tspi_TPM_DAA_Sign(TSS_HDAA                 hDAA,			// in
 	int before = mallinfo().uordblks;
 #endif
 
+	LogTrace();
 	LogDebug("-> TSPI_TPM_DAA_Sign hDAA=%ld hTPM=%ld ", (long)hDAA, (long)hTPM);
 
 	result = Tspi_TPM_DAA_Sign_internal(hDAA,
