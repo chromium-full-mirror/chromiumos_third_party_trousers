@@ -40,6 +40,7 @@ Tspi_TPM_GetCapability(TSS_HTPM hTPM,			/* in */
 	UINT64 offset;
 	TSS_BOOL fOwnerAuth = FALSE, endianFlag = TRUE;
 
+	LogTrace();
 	if (pulRespDataLength == NULL || prgbRespData == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -353,4 +354,3 @@ Tspi_TPM_GetCapabilitySigned(TSS_HTPM hTPM,			/* in */
 	 */
 	return TSPERR(TSS_E_NOTIMPL);
 }
-

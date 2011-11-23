@@ -36,6 +36,10 @@
 #define TSPERR(x)		LogTSPERR(x, __FILE__, __LINE__)
 #define TCSERR(x)		LogTCSERR(x, __FILE__, __LINE__)
 #define TDDLERR(x)		LogTDDLERR(x, __FILE__, __LINE__)
+#elif defined (TSS_TRACE)
+#define TSPERR(x)		LogTSPERR(x, __FILE__, __LINE__)
+#define TCSERR(x)		LogTCSERR(x, __FILE__, __LINE__)
+#define TDDLERR(x)		LogTDDLERR(x, __FILE__, __LINE__)
 #else
 #define TSPERR(x)		(x | TSS_LAYER_TSP)
 #define TCSERR(x)		(x | TSS_LAYER_TCS)

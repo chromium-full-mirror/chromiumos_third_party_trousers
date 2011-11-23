@@ -40,6 +40,7 @@ Tspi_TPM_GetAuditDigest(TSS_HTPM            hTpm,		/* in */
 	TSS_RESULT result = TSS_SUCCESS;
 	UINT64 offset;
 
+	LogTrace();
 	if ((pulAuditDigestSize == NULL) || (prgbAuditDigest == NULL) || (pCounterValue == NULL))
 		return TSPERR(TSS_E_BAD_PARAMETER);
 

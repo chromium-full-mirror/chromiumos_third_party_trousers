@@ -36,6 +36,7 @@ Tspi_Key_UnloadKey(TSS_HKEY hKey)	/* in */
 	TCS_KEY_HANDLE hTcsKey;
 	TSS_RESULT result;
 
+	LogTrace();
 	if ((result = obj_rsakey_get_tsp_context(hKey, &tspContext)))
 		return result;
 
@@ -63,6 +64,7 @@ Tspi_Key_LoadKey(TSS_HKEY hKey,			/* in */
 	Trspi_HashCtx hashCtx;
 	TPM_COMMAND_CODE ordinal;
 
+	LogTrace();
 	if (!obj_is_rsakey(hUnwrappingKey))
 		return TSPERR(TSS_E_INVALID_HANDLE);
 
@@ -142,6 +144,7 @@ Tspi_Key_GetPubKey(TSS_HKEY hKey,		/* in */
 	TSS_BOOL usesAuth;
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 	if (pulPubKeyLength == NULL || prgbPubKey == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -224,6 +227,7 @@ Tspi_Key_CreateKey(TSS_HKEY hKey,		/* in */
 	Trspi_HashCtx hashCtx;
 	struct authsess *xsap = NULL;
 
+	LogTrace();
 	if ((result = obj_rsakey_get_tsp_context(hKey, &tspContext)))
 		return result;
 
@@ -359,6 +363,7 @@ Tspi_Key_WrapKey(TSS_HKEY hKey,			/* in */
 	TSS_HCONTEXT tspContext;
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 	if ((result = obj_rsakey_get_tsp_context(hKey, &tspContext)))
 		return result;
 
@@ -466,6 +471,7 @@ Tspi_Context_LoadKeyByBlob(TSS_HCONTEXT tspContext,	/* in */
 	Trspi_HashCtx hashCtx;
 	TPM_COMMAND_CODE ordinal;
 
+	LogTrace();
 	if (phKey == NULL || rgbBlobData == NULL )
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -573,6 +579,7 @@ Tspi_TPM_OwnerGetSRKPubKey(TSS_HTPM hTPM,		/* in */
 	Trspi_HashCtx hashCtx;
 	TCPA_DIGEST digest;
 
+	LogTrace();
 	if (pulPuKeyLength == NULL || prgbPubKey == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -645,6 +652,7 @@ Tspi_TPM_KeyControlOwner(TSS_HTPM hTPM,		/* in */
 	TCPA_DIGEST digest;
 	TPM_AUTH ownerAuth;
 
+	LogTrace();
 	LogDebugFn("Enter");
 
 	/* Check valid TPM context, get TSP context */

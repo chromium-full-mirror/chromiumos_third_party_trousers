@@ -39,6 +39,7 @@ Tspi_Data_Bind(TSS_HENCDATA hEncData,	/* in */
 	TSS_KEY keyContainer;
 	TSS_HCONTEXT tspContext;
 
+	LogTrace();
 	if (rgbDataToBind == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -153,6 +154,7 @@ Tspi_Data_Unbind(TSS_HENCDATA hEncData,		/* in */
         TSS_HCONTEXT tspContext;
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 	if (pulUnboundDataLength == NULL || prgbUnboundData == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -214,4 +216,3 @@ error:
 	*pulUnboundDataLength = 0;
 	return result;
 }
-

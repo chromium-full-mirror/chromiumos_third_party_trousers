@@ -52,6 +52,7 @@ Tspi_NV_DefineSpace(TSS_HNVSTORE hNvstore,	/* in */
 	Trspi_HashCtx hashCtx;
 	struct authsess *xsap = NULL;
 
+	LogTrace();
 	if ((result = obj_nvstore_get_tsp_context(hNvstore, &tspContext)))
 		return result;
 
@@ -170,6 +171,7 @@ Tspi_NV_ReleaseSpace(TSS_HNVSTORE hNvstore)	/* in */
 	Trspi_HashCtx hashCtx;
 	struct authsess *xsap = NULL;
 
+	LogTrace();
 	__tspi_memset(&nv_data_public, 0, sizeof(NV_DATA_PUBLIC));
 
 	if ((result = obj_nvstore_get_tsp_context(hNvstore, &tspContext)))
@@ -275,6 +277,7 @@ Tspi_NV_WriteValue(TSS_HNVSTORE hNvstore,	/* in */
 	TCPA_DIGEST digest;
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 	if ((ulDataLength != 0) && (rgbDataToWrite == NULL))
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -402,6 +405,7 @@ Tspi_NV_ReadValue(TSS_HNVSTORE hNvstore,	/* in */
 	TCPA_DIGEST digest;
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 	if (ulDataLength == NULL || rgbDataRead == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 

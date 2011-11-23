@@ -34,6 +34,7 @@ Tspi_TPM_Delegate_AddFamily(TSS_HTPM        hTpm,	/* in, must not be NULL */
 	UINT64 offset;
 	TSS_RESULT result;
 
+	LogTrace();
 	if (phFamily == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 	*phFamily = NULL_HDELFAMILY;
@@ -66,6 +67,7 @@ Tspi_TPM_Delegate_GetFamily(TSS_HTPM        hTpm,	/* in, must not NULL */
 {
 	TSS_RESULT result;
 
+	LogTrace();
 	if (phFamily == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 	*phFamily = NULL_HDELFAMILY;
@@ -90,6 +92,7 @@ Tspi_TPM_Delegate_InvalidateFamily(TSS_HTPM       hTpm,		/* in, must not be NULL
 	BYTE *outData = NULL;
 	TSS_RESULT result;
 
+	LogTrace();
 	if ((result = obj_delfamily_get_familyid(hFamily, &familyID)))
 		return result;
 
@@ -115,6 +118,7 @@ Tspi_TPM_Delegate_CreateDelegation(TSS_HOBJECT    hObject,	/* in */
 {
 	TSS_RESULT result;
 
+	LogTrace();
 	if (obj_is_tpm(hObject)) {
 		if ((result = create_owner_delegation(hObject, bLabel, ulFlags, hPcrs, hFamily,
 						      hDelegation)))
@@ -145,6 +149,7 @@ Tspi_TPM_Delegate_CacheOwnerDelegation(TSS_HTPM    hTpm,	/* in */
 	TPM_AUTH ownerAuth, *pAuth;
 	TSS_RESULT result;
 
+	LogTrace();
 	if ((result = obj_tpm_get_tsp_context(hTpm, &hContext)))
 		return result;
 
@@ -234,6 +239,7 @@ Tspi_TPM_Delegate_UpdateVerificationCount(TSS_HTPM    hTpm,		/* in */
 	UINT64 offset;
 	TSS_RESULT result;
 
+	LogTrace();
 	if ((result = obj_tpm_get_tsp_context(hTpm, &hContext)))
 		return result;
 
@@ -316,6 +322,7 @@ Tspi_TPM_Delegate_VerifyDelegation(TSS_HPOLICY hDelegation)	/* in, out */
 	BYTE *delegate = NULL;
 	TSS_RESULT result;
 
+	LogTrace();
 	if ((result = obj_policy_get_tsp_context(hDelegation, &hContext)))
 		return result;
 
@@ -349,6 +356,7 @@ Tspi_TPM_Delegate_ReadTables(TSS_HCONTEXT                 hContext,		/* in */
 	UINT64 tssOffset;
 	TSS_RESULT result;
 
+	LogTrace();
 	if (!pulFamilyTableSize || !ppFamilyTable || !pulDelegateTableSize || !ppDelegateTable)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -467,4 +475,3 @@ done:
 
 	return result;
 }
-

@@ -32,6 +32,7 @@ Tspi_GetPolicyObject(TSS_HOBJECT hObject,	/* in */
 {
 	TSS_RESULT result;
 
+	LogTrace();
 	if (phPolicy == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -72,6 +73,7 @@ Tspi_Policy_SetSecret(TSS_HPOLICY hPolicy,	/* in */
 	TSS_RESULT result;
 	TSS_HCONTEXT tspContext;
 
+	LogTrace();
 	if ((result = obj_policy_get_tsp_context(hPolicy, &tspContext)))
 		return result;
 
@@ -84,6 +86,7 @@ Tspi_Policy_SetSecret(TSS_HPOLICY hPolicy,	/* in */
 TSS_RESULT
 Tspi_Policy_FlushSecret(TSS_HPOLICY hPolicy)	/* in */
 {
+	LogTrace();
 	return obj_policy_flush_secret(hPolicy);
 }
 
@@ -93,6 +96,7 @@ Tspi_Policy_AssignToObject(TSS_HPOLICY hPolicy,	/* in */
 {
 	TSS_RESULT result;
 
+	LogTrace();
 	if (obj_is_tpm(hObject)) {
 		result = obj_tpm_set_policy(hObject, hPolicy);
 #ifdef TSS_BUILD_NV

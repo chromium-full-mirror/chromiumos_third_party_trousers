@@ -39,6 +39,7 @@ Tspi_Hash_TickStampBlob(TSS_HHASH       hHash,			/* in */
 	UINT64 offset;
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 	if (pValidationData == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 

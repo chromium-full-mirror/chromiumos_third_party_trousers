@@ -37,6 +37,7 @@ Tspi_Context_GetCapability(TSS_HCONTEXT tspContext,	/* in */
 {
 	TSS_RESULT result;
 
+	LogTrace();
 	if (prgbRespData == NULL || pulRespDataLength == NULL )
 		return TSPERR(TSS_E_BAD_PARAMETER);
 

@@ -31,6 +31,7 @@
 TSS_RESULT
 Tspi_Context_Create(TSS_HCONTEXT * phContext)	/* out */
 {
+	LogTrace();
 	if (phContext == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -40,6 +41,7 @@ Tspi_Context_Create(TSS_HCONTEXT * phContext)	/* out */
 TSS_RESULT
 Tspi_Context_Close(TSS_HCONTEXT tspContext)	/* in */
 {
+	LogTrace();
 	if (!obj_is_context(tspContext))
 		return TSPERR(TSS_E_INVALID_HANDLE);
 
@@ -73,6 +75,7 @@ Tspi_Context_Connect(TSS_HCONTEXT tspContext,	/* in */
 	TSS_HOBJECT hTpm;
 	UINT32 string_len = 0;
 
+	LogTrace();
 
 	if (wszDestination == NULL) {
 		if ((result = obj_context_get_machine_name(tspContext,
@@ -109,6 +112,7 @@ TSS_RESULT
 Tspi_Context_FreeMemory(TSS_HCONTEXT tspContext,	/* in */
 			BYTE * rgbMemory)		/* in */
 {
+	LogTrace();
 	if (!obj_is_context(tspContext))
 		return TSPERR(TSS_E_INVALID_HANDLE);
 
@@ -119,6 +123,7 @@ TSS_RESULT
 Tspi_Context_GetDefaultPolicy(TSS_HCONTEXT tspContext,	/* in */
 			      TSS_HPOLICY * phPolicy)	/* out */
 {
+	LogTrace();
 	if (phPolicy == NULL )
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -136,6 +141,7 @@ Tspi_Context_CreateObject(TSS_HCONTEXT tspContext,	/* in */
 {
 	TSS_RESULT result;
 
+	LogTrace();
 	if (phObject == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -311,7 +317,7 @@ Tspi_Context_CreateObject(TSS_HCONTEXT tspContext,	/* in */
 		/* There are no valid flags for a MIGDATA object */
 		if (initFlags & ~(0UL))
 			return TSPERR(TSS_E_INVALID_OBJECT_INITFLAG);
-	
+
 		result = obj_migdata_add(tspContext, phObject);
 		break;
 #endif
@@ -330,6 +336,7 @@ Tspi_Context_CloseObject(TSS_HCONTEXT tspContext,	/* in */
 {
 	TSS_RESULT result;
 
+	LogTrace();
 	if (!obj_is_context(tspContext))
 		return TSPERR(TSS_E_INVALID_HANDLE);
 
@@ -374,6 +381,7 @@ TSS_RESULT
 Tspi_Context_GetTpmObject(TSS_HCONTEXT tspContext,	/* in */
 			  TSS_HTPM * phTPM)		/* out */
 {
+	LogTrace();
 	if (phTPM == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -382,4 +390,3 @@ Tspi_Context_GetTpmObject(TSS_HCONTEXT tspContext,	/* in */
 
 	return obj_tpm_get(tspContext, phTPM);
 }
-

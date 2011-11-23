@@ -36,7 +36,18 @@
 #define LogWarn(fmt, ...)	LogMessage(stdout, "LOG_WARNING", APPID, "WARNING: " fmt, ##__VA_ARGS__)
 /* Info Logging */
 #define LogInfo(fmt, ...)	LogMessage(stdout, "LOG_INFO", APPID, fmt, ##__VA_ARGS__)
+#define LogTrace()
 /* Return Value logging */
+extern TSS_RESULT LogTSPERR(TSS_RESULT, char *, int);
+#elif defined (TSS_TRACE)
+#include <syslog.h>
+#define LogDebug(fmt, ...)
+#define LogDebugFn(fmt, ...)
+#define LogDebugData(sz,blb)
+#define LogError(fmt, ...) syslog(LOG_ERR, "TSS: " fmt, ##__VA_ARGS__)
+#define LogWarn(fmt, ...) syslog(LOG_WARNING, "TSS: " fmt, ##__VA_ARGS__)
+#define LogInfo(fmt, ...) syslog(LOG_INFO, "TSS: " fmt, ##__VA_ARGS__)
+#define LogTrace() syslog(LOG_INFO, "TSS: %s", __FUNCTION__)
 extern TSS_RESULT LogTSPERR(TSS_RESULT, char *, int);
 #else
 #define LogDebug(fmt, ...)
@@ -45,6 +56,7 @@ extern TSS_RESULT LogTSPERR(TSS_RESULT, char *, int);
 #define LogError(fmt, ...)
 #define LogWarn(fmt, ...)
 #define LogInfo(fmt, ...)
+#define LogTrace()
 #endif
 
 void LogBlobData(char *appid, unsigned long sizeOfBlob, unsigned char *blob);

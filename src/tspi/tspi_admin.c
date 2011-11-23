@@ -36,6 +36,7 @@ Tspi_TPM_SetStatus(TSS_HTPM hTPM,	/* in */
 	Trspi_HashCtx hashCtx;
 	UINT32 tpmVersion;
 
+	LogTrace();
 	if ((result = obj_tpm_get_tsp_context(hTPM, &tspContext)))
 		return result;
 
@@ -276,6 +277,7 @@ Tspi_TPM_GetStatus(TSS_HTPM hTPM,		/* in */
 	UINT32 nonVolFlags;
 	UINT32 volFlags;
 
+	LogTrace();
 	if (pfTpmState == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 

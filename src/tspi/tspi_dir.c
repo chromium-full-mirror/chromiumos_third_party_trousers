@@ -36,6 +36,7 @@ Tspi_TPM_DirWrite(TSS_HTPM hTPM,		/* in */
 	TCPA_DIRVALUE dirValue = { { 0 } };
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 	if (rgbDirData == NULL || ulDirDataLength == 0)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -85,6 +86,7 @@ Tspi_TPM_DirRead(TSS_HTPM hTPM,			/* in */
 	TSS_RESULT result;
 	TSS_HCONTEXT tspContext;
 
+	LogTrace();
 	if (pulDirDataLength == NULL || prgbDirData == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 

@@ -43,6 +43,7 @@ Tspi_TPM_AuthorizeMigrationTicket(TSS_HTPM hTPM,			/* in */
 	UINT32 tpmMigrationScheme;
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 	if (pulMigTicketLength == NULL || prgbMigTicket == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -172,6 +173,7 @@ Tspi_Key_CreateMigrationBlob(TSS_HKEY hKeyToMigrate,		/* in */
 	TSS_HCONTEXT tspContext;
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 	__tspi_memset(&tssKey, 0, sizeof(TSS_KEY));
 
 	if (pulRandomLength == NULL || prgbRandom == NULL || rgbMigTicket == NULL ||
@@ -324,6 +326,7 @@ Tspi_Key_ConvertMigrationBlob(TSS_HKEY hKeyToMigrate,		/* in */
 	Trspi_HashCtx hashCtx;
 	UINT64 offset;
 
+	LogTrace();
 	__tspi_memset(&tssKey, 0, sizeof(TSS_KEY));
 
 	if ((result = obj_rsakey_get_tsp_context(hKeyToMigrate, &tspContext)))

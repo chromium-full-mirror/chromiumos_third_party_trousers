@@ -34,7 +34,7 @@
 #endif
 
 #define OPENSSL_COMPAT_ASN1_SEQUENCE(tname) \
-	static const ASN1_TEMPLATE tname##_seq_tt[] 
+	static const ASN1_TEMPLATE tname##_seq_tt[]
 
 typedef struct tdTSS_BLOB {
 	ASN1_INTEGER *		structVersion;
@@ -65,6 +65,7 @@ Tspi_EncodeDER_TssBlob(UINT32 rawBlobSize,		/* in */
 	BYTE *encBlob = NULL;
 	UINT32 encBlobLen;
 
+	LogTrace();
 	if ((rawBlobSize == 0) || (rawBlob == NULL))
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -199,6 +200,7 @@ Tspi_DecodeBER_TssBlob(UINT32 berBlobSize,		/* in */
 	UINT32 encBlobLen = berBlobSize;
 	UINT32 decStructVersion, decBlobType, decBlobSize;
 
+	LogTrace();
 	if ((berBlobSize == 0) || (berBlob == NULL))
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -252,4 +254,3 @@ Tspi_DecodeBER_TssBlob(UINT32 berBlobSize,		/* in */
 
 	return TSS_SUCCESS;
 }
-

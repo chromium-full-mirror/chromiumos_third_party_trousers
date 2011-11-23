@@ -27,6 +27,7 @@ Tspi_Hash_SetHashValue(TSS_HHASH hHash,			/* in */
 		       UINT32 ulHashValueLength,	/* in */
 		       BYTE * rgbHashValue)		/* in */
 {
+	LogTrace();
 	if (ulHashValueLength == 0 || rgbHashValue == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -38,6 +39,7 @@ Tspi_Hash_GetHashValue(TSS_HHASH hHash,			/* in */
 		       UINT32 * pulHashValueLength,	/* out */
 		       BYTE ** prgbHashValue)		/* out */
 {
+	LogTrace();
 	if (pulHashValueLength == NULL || prgbHashValue == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -49,6 +51,7 @@ Tspi_Hash_UpdateHashValue(TSS_HHASH hHash,	/* in */
 			  UINT32 ulDataLength,	/* in */
 			  BYTE *rgbData)	/* in */
 {
+	LogTrace();
 	if (rgbData == NULL && ulDataLength != 0)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 

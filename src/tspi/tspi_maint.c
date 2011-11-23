@@ -37,6 +37,7 @@ Tspi_TPM_CreateMaintenanceArchive(TSS_HTPM hTPM,			/* in */
 	TCPA_DIGEST digest;
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 	if (pulArchiveDataLength == NULL || prgbArchiveData == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -106,6 +107,7 @@ Tspi_TPM_KillMaintenanceFeature(TSS_HTPM hTPM)	/*  in */
 	TCPA_DIGEST digest;
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 	if ((result = obj_tpm_get_tsp_context(hTPM, &tspContext)))
 		return result;
 
@@ -149,6 +151,7 @@ Tspi_TPM_LoadMaintenancePubKey(TSS_HTPM hTPM,				/* in */
 	UINT32 pubBlobSize;
 	BYTE hashBlob[512], *pubBlob;
 
+	LogTrace();
 	if ((result = obj_tpm_get_tsp_context(hTPM, &tspContext)))
 		return result;
 
@@ -216,6 +219,7 @@ Tspi_TPM_CheckMaintenancePubKey(TSS_HTPM hTPM,				/* in */
 	BYTE *pubBlob;
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 	if ((pValidationData && hMaintenanceKey) || (!pValidationData && !hMaintenanceKey))
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
@@ -265,4 +269,3 @@ Tspi_TPM_CheckMaintenancePubKey(TSS_HTPM hTPM,				/* in */
 
 	return result;
 }
-

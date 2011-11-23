@@ -47,6 +47,7 @@ Tspi_Key_CertifyKey(TSS_HKEY hKey,			/* in */
 	TSS_HCONTEXT tspContext;
 	Trspi_HashCtx hashCtx;
 
+	LogTrace();
 
 	if ((result = obj_rsakey_get_tsp_context(hKey, &tspContext)))
 		return result;
@@ -171,4 +172,3 @@ Tspi_Key_CertifyKey(TSS_HKEY hKey,			/* in */
 	free(outData);
 	return result;
 }
-
