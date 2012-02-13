@@ -24,7 +24,7 @@ tssinclude_HEADERS = tss/tcpa_error.h \
 		     tss/tpm.h \
 		     tss/tpm_error.h \
 		     tss/tpm_ordinal.h
-trousersinclude_HEADERS = trousers/tss.h trousers/trousers.h
+trousersinclude_HEADERS = trousers/tss.h trousers/trousers.h trousers/scoped_tss_type.h
 
 noinst_HEADERS = auth_mgr.h authsess.h biosem.h capabilities.h \
 	hosttable.h imaem.h memmgr.h obj_context.h \
