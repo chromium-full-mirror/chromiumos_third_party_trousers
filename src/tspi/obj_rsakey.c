@@ -1185,6 +1185,7 @@ obj_rsakey_set_modulus(TSS_HKEY hKey, UINT32 size, BYTE *data)
 		result = TSPERR(TSS_E_OUTOFMEMORY);
 		goto done;
 	}
+	free(free_ptr);
 	rsakey->key.pubKey.keyLength = size;
 	memcpy(rsakey->key.pubKey.key, data, size);
 
@@ -1356,6 +1357,7 @@ obj_rsakey_set_exponent(TSS_HKEY hKey, UINT32 size, BYTE *data)
 		result = TSPERR(TSS_E_OUTOFMEMORY);
 		goto done;
 	}
+	free(free_ptr);
 	parms->exponentSize = size;
 	memcpy(parms->exponent, data, size);
 done:
