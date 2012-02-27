@@ -264,8 +264,11 @@ main(int argc, char **argv)
 		LogError("Failed bind: %s", strerror(errno));
 		return -1;
 	}
-        chmod(serv_addr.sun_path,
-              S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+        if (chmod(serv_addr.sun_path,
+                  S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP) < 0) {
+                LogError("Failed chmod: %s", strerror(errno));
+                return -1;
+        }
 #ifndef SOLARIS
 	pwd = getpwnam(TSS_USER_NAME);
 	if (pwd == NULL) {
@@ -277,6 +280,10 @@ main(int argc, char **argv)
 		}
 		return TCSERR(TSS_E_INTERNAL_ERROR);
 	}
+        if (chown(serv_addr.sun_path, -1, pwd->pw_gid) < 0) {
+                LogError("Failed chown: %s", strerror(errno));
+                return -1;
+        }
 	setuid(pwd->pw_uid);
 #endif
 	if (listen(sd, TCSD_MAX_SOCKETS_QUEUED) < 0) {
