@@ -10,6 +10,7 @@ BUILD_TEST_DIR = work
 TEST_SUITES ?= cmk context data delegation hash key nv \
                pcrcomposite policy tpm transport tspi
 
+CFLAGS += -DTESTSUITE_NOAUTH_SRK
 LDFLAGS += -ltspi -lssl -lcrypto -lpthread
 
 all:
@@ -24,7 +25,9 @@ all:
 	for i in $(TEST_SUITES); do                                          \
 		mkdir -p bin;                                                \
 		$(MAKE) CC="$(CC)" LDFLAGS="$(LDFLAGS)"                      \
-			-C "$(BUILD_TEST_DIR)/$$i" all install;              \
+			-C "$(BUILD_TEST_DIR)/$$i" all;                      \
+		$(MAKE) CC="$(CC)" LDFLAGS="$(LDFLAGS)"                      \
+			-C "$(BUILD_TEST_DIR)/$$i" install;                  \
 		mv bin tests/$$i;                                            \
 	done
 
