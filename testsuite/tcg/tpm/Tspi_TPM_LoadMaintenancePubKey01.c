@@ -194,7 +194,7 @@ main_v1_1( void )
 		exit( result );
 	}
 
-	ValidationData.ulDataLength = 20;
+	ValidationData.ulExternalDataLength = 20;
 	ValidationData.rgbExternalData = data;
 
 		//Load Key Blob

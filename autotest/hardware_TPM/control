@@ -29,5 +29,14 @@ test_suites = [
     'transport',     # ~157 tests: Tests associated with transport sessions
     'tspi',          #  ~66 tests: TCG Service Provider Interface
 ]
+
+owner_secret = None
+if os.environ.has_key('TESTSUITE_OWNER_SECRET'):
+    owner_secret = os.environ.get('TESTSUITE_OWNER_SECRET')
+
 for suite in test_suites:
-    job.run_test('hardware_TPM', suite=suite, tag=suite)
+    job.run_test('hardware_TPM',
+                 suite=suite,
+                 owner_secret=owner_secret,
+                 test_filter=None,
+                 tag=suite)

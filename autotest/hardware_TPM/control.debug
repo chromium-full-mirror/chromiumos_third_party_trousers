@@ -19,9 +19,21 @@ TEST_TPM_SUITE="delegation" run_remote_tests.sh --board x86-generic --nocleanup 
 
 """
 
+owner_secret = None
+if os.environ.has_key('TESTSUITE_OWNER_SECRET'):
+    owner_secret = os.environ.get('TESTSUITE_OWNER_SECRET')
+
+test_filter = None
+if os.environ.has_key('TEST_TPM_FILTER'):
+    test_filter = os.environ.get('TEST_TPM_FILTER')
+
 # Maybe we only want to run a single TPM test suite?
 if os.environ.has_key('TEST_TPM_SUITE'):
     suite = os.environ.get('TEST_TPM_SUITE')
     client = hosts.create_host(machines[0])
     client_at = autotest.Autotest(client)
-    client_at.run_test('hardware_TPM', suite=suite, tag=suite)
+    client_at.run_test('hardware_TPM',
+                       suite=suite,
+                       owner_secret=owner_secret,
+                       test_filter=test_filter,
+                       tag=suite)
