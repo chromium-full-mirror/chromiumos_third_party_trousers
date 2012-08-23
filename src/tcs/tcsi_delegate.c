@@ -326,7 +326,7 @@ TCSP_DSAP_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	TSS_RESULT result;
 	UINT64 offset = 0;
 	UINT32 paramSize;
-	TPM_KEY_HANDLE tpmKeyHandle;
+	TPM_KEY_HANDLE tpmKeyHandle = 0;
 	BYTE txBlob[TSS_TPM_TXBLOB_SIZE];
 
 	LogDebugFn("Enter");
@@ -334,7 +334,8 @@ TCSP_DSAP_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if (ensureKeyIsLoaded(hContext, keyHandle, &tpmKeyHandle))
+	if (entityType != TPM_ET_DEL_OWNER_BLOB &&
+	    ensureKeyIsLoaded(hContext, keyHandle, &tpmKeyHandle))
 		return TCSERR(TSS_E_KEY_NOT_LOADED);
 
 	/* are the maximum number of auth sessions open? */
