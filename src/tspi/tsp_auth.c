@@ -803,6 +803,7 @@ authsess_xsap_init(TSS_HCONTEXT     tspContext,
 		req_auth = FALSE;
 		/* fall through */
 	case TPM_ORD_MakeIdentity:
+	case TPM_ORD_ActivateIdentity:
 	case TPM_ORD_NV_DefineSpace:
 		if ((result = obj_tpm_get_policy(obj_parent, TSS_POLICY_USAGE,
 						 &sess->hUsageParent)))
@@ -951,6 +952,9 @@ authsess_xsap_init(TSS_HCONTEXT     tspContext,
 	case TPM_ORD_ChangeAuthOwner:
 		sess->hUsageChild = obj_child;
 		new_secret = TR_SECRET_CTX_NEW;
+		break;
+	case TPM_ORD_ActivateIdentity:
+		get_child_auth = FALSE;
 		break;
 	default:
 		result = TSPERR(TSS_E_INTERNAL_ERROR);

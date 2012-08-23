@@ -431,6 +431,9 @@ Tspi_TPM_ActivateIdentity(TSS_HTPM hTPM,			/* in */
 	TSS_CALLBACK *cb;
 	Trspi_HashCtx hashCtx;
 	TPM_SYM_CA_ATTESTATION symCAAttestation;
+	struct authsess *xsap = NULL;
+	UINT32 delegationType = TSS_DELEGATIONTYPE_NONE;
+	TPM_AUTH* ownerAuthPtr = &ownerAuth;
 
 	LogTrace();
 	if (pulCredentialLength == NULL || prgbCredential == NULL)
@@ -459,6 +462,9 @@ Tspi_TPM_ActivateIdentity(TSS_HTPM hTPM,			/* in */
 	if ((result = obj_tpm_get_policy(hTPM, TSS_POLICY_USAGE, &hTPMPolicy)))
 		return result;
 
+	if ((result = obj_policy_get_delegation_type(hTPMPolicy, &delegationType)))
+		return result;
+
 	result = Trspi_HashInit(&hashCtx, TSS_HASH_SHA1);
 	result |= Trspi_Hash_UINT32(&hashCtx, TPM_ORD_ActivateIdentity);
 	result |= Trspi_Hash_UINT32(&hashCtx, ulAsymCAContentsBlobLength);
@@ -474,38 +480,64 @@ Tspi_TPM_ActivateIdentity(TSS_HTPM hTPM,			/* in */
 	} else {
 		pIDKeyAuth = NULL;
 	}
-
-	if ((result = secret_PerformAuth_OIAP(hTPM, TPM_ORD_ActivateIdentity, hTPMPolicy, FALSE,
-					      &digest, &ownerAuth)))
-		return result;
-
+	if (delegationType == TSS_DELEGATIONTYPE_NONE) {
+		if ((result = secret_PerformAuth_OIAP(hTPM, TPM_ORD_ActivateIdentity, hTPMPolicy,
+						      FALSE, &digest, &ownerAuth)))
+			return result;
+	} else {
+		if ((result = authsess_xsap_init(tspContext, hTPM, NULL,
+						 TSS_AUTH_POLICY_REQUIRED,
+						 TPM_ORD_ActivateIdentity,
+						 TPM_ET_OWNER, &xsap)))
+			return result;
+		if ((result = authsess_xsap_hmac(xsap, &digest))) {
+			authsess_free(xsap);
+			return result;
+		}
+		ownerAuthPtr = xsap->pAuth;
+	}
 	if ((result = TCS_API(tspContext)->ActivateTPMIdentity(tspContext, tcsKeyHandle,
 							       ulAsymCAContentsBlobLength,
 							       rgbAsymCAContentsBlob, pIDKeyAuth,
-							       &ownerAuth, &symKeyBlobLen,
-							       &symKeyBlob)))
+							       ownerAuthPtr, &symKeyBlobLen,
+							       &symKeyBlob))) {
+		authsess_free(xsap);
 		return result;
+	}
 
 	result = Trspi_HashInit(&hashCtx, TSS_HASH_SHA1);
 	result |= Trspi_Hash_UINT32(&hashCtx, result);
 	result |= Trspi_Hash_UINT32(&hashCtx, TPM_ORD_ActivateIdentity);
 	result |= Trspi_HashUpdate(&hashCtx, symKeyBlobLen, symKeyBlob);
-	if ((result |= Trspi_HashFinal(&hashCtx, digest.digest)))
+	if ((result |= Trspi_HashFinal(&hashCtx, digest.digest))) {
+		authsess_free(xsap);
 		return result;
+	}
 
 	if (usesAuth) {
 		if ((result = obj_policy_validate_auth_oiap(hIDPolicy, &digest,
 							    &idKeyAuth))) {
 			LogDebugFn("Identity key auth validation of the symmetric key failed.");
+			authsess_free(xsap);
 			return result;
 		}
 	}
-
-	if ((result = obj_policy_validate_auth_oiap(hTPMPolicy, &digest,
-						    &ownerAuth))) {
-		LogDebugFn("Owner auth validation of the symmetric key failed.");
-		return result;
+	if (delegationType == TSS_DELEGATIONTYPE_NONE) {
+		if ((result = obj_policy_validate_auth_oiap(hTPMPolicy, &digest,
+							    &ownerAuth))) {
+			LogDebugFn("Owner auth validation of the symmetric key failed.");
+			authsess_free(xsap);
+			return result;
+		}
+	} else {
+		if ((result = authsess_xsap_verify(xsap, &digest))) {
+			LogDebugFn("Owner auth validation failed.");
+			authsess_free(xsap);
+			return result;
+		}
 	}
+	authsess_free(xsap);
+	xsap = NULL;
 
 	offset = 0;
 	if ((result = Trspi_UnloadBlob_SYM_CA_ATTESTATION(&offset, rgbSymCAAttestationBlob,
