@@ -101,14 +101,17 @@ LoadKeyByBlob_Internal(UINT32 ord,	/* The ordinal to use, LoadKey or LoadKey2 */
 		}
 	}
 
-        LogDebugFn("calling canILoadThisKey");
+	LogDebugFn("calling canILoadThisKey");
 	if ((result = canILoadThisKey(&(key.algorithmParms), &canLoad)))
 		goto error;
 
-	if (canLoad == FALSE) {
+	while (canLoad == FALSE) {
 		LogDebugFn("calling evictFirstKey");
 		/* Evict a key that isn't the parent */
 		if ((result = evictFirstKey(hUnwrappingKey)))
+			goto error;
+		LogDebugFn("calling canILoadThisKey again");
+		if ((result = canILoadThisKey(&(key.algorithmParms), &canLoad)))
 			goto error;
 	}
 
