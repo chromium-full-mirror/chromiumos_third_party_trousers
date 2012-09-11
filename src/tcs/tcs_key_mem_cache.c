@@ -1029,7 +1029,7 @@ LoadKeyShim(TCS_CONTEXT_HANDLE hContext, TCPA_STORE_PUBKEY *pubKey,
 		LoadBlob_TSS_KEY(&offset, keyBlob, myKey);
 		if ((result = TCSP_LoadKeyByBlob_Internal(hContext, parentHandle, offset, keyBlob,
 							  NULL, &tcsKeyHandle, slotOut)))
-			return result;
+			return TCSERR(TCS_E_KM_LOADFAILED);
 
 		return ctx_mark_key_loaded(hContext, tcsKeyHandle);
 #if TSS_BUILD_PS
