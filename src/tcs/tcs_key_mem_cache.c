@@ -910,8 +910,12 @@ evictFirstKey(TCS_KEY_HANDLE parent_tcs_handle)
 	}
 
 	if (tpm_handle_to_evict != NULL_TCS_HANDLE) {
-		if ((result = internal_EvictByKeySlot(tpm_handle_to_evict)))
+		result = internal_EvictByKeySlot(tpm_handle_to_evict);
+		if (result == TPM_E_KEYNOTFOUND) {
+			LogWarn("Evict: Key not found.");
+		} else if (result) {
 			return result;
+		}
 
 		LogDebugFn("Evicted key w/ TPM handle 0x%x", tpm_handle_to_evict);
 		result = mc_set_slot_by_slot(tpm_handle_to_evict, NULL_TPM_HANDLE);
