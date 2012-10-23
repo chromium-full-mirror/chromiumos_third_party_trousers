@@ -911,7 +911,8 @@ evictFirstKey(TCS_KEY_HANDLE parent_tcs_handle)
 
 	if (tpm_handle_to_evict != NULL_TCS_HANDLE) {
 		result = internal_EvictByKeySlot(tpm_handle_to_evict);
-		if (result == TPM_E_KEYNOTFOUND) {
+		if (result == TPM_E_KEYNOTFOUND ||
+		    result == TPM_E_INVALID_KEYHANDLE) {
 			LogWarn("Evict: Key not found.");
 		} else if (result) {
 			return result;
