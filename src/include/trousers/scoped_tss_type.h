@@ -98,7 +98,7 @@ class ScopedTssType {
   }
 
  private:
-  static ReleaseProc const release_;
+  ReleaseProc release_;
   TSS_HCONTEXT context_;
   TssType type_;
 };
