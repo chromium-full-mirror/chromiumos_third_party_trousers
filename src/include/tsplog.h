@@ -53,9 +53,9 @@ extern TSS_RESULT LogTSPERR(TSS_RESULT, char *, int);
 #define LogDebug(fmt, ...)
 #define LogDebugFn(fmt, ...)
 #define LogDebugData(sz,blb)
-#define LogError(fmt, ...)
-#define LogWarn(fmt, ...)
-#define LogInfo(fmt, ...)
+#define LogError(fmt, ...) syslog(LOG_ERR, "TSS: " fmt, ##__VA_ARGS__)
+#define LogWarn(fmt, ...) syslog(LOG_WARNING, "TSS: " fmt, ##__VA_ARGS__)
+#define LogInfo(fmt, ...) syslog(LOG_INFO, "TSS: " fmt, ##__VA_ARGS__)
 #define LogTrace()
 #endif
 
