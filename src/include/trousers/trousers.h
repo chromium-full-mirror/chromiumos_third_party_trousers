@@ -75,6 +75,7 @@ TSS_RESULT Trspi_UnloadBlob_CAP_VERSION_INFO(UINT64 *offset, BYTE *blob, TPM_CAP
 TSS_RESULT Trspi_UnloadBlob_NV_INDEX(UINT64 *offset, BYTE *blob, TPM_NV_INDEX *v);
 TSS_RESULT Trspi_UnloadBlob_NV_ATTRIBUTES(UINT64 *offset, BYTE *blob, TPM_NV_ATTRIBUTES *v);
 TSS_RESULT Trspi_UnloadBlob_NV_DATA_PUBLIC(UINT64 *offset, BYTE *blob, TPM_NV_DATA_PUBLIC *v);
+TSS_RESULT Trspi_UnloadBlob_DA_INFO(UINT64 *offset, BYTE *blob, TPM_DA_INFO *info);
 
 /* Blob loading functions */
 void Trspi_LoadBlob_BOUND_DATA(UINT64 *, TCPA_BOUND_DATA, UINT32, BYTE *);

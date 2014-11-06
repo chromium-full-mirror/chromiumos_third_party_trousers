@@ -1538,7 +1538,7 @@ typedef struct tdTPM_DA_INFO
     TPM_STRUCTURE_TAG  tag;
     TPM_DA_STATE       state;
     UINT16             currentCount;
-    UINT16             threshholdCount;
+    UINT16             thresholdCount;
     TPM_DA_ACTION_TYPE actionAtThreshold;
     UINT32             actionDependValue;
     UINT32             vendorDataSize;

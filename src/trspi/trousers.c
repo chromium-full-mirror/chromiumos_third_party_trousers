@@ -2809,3 +2809,42 @@ Trspi_UnloadBlob_NV_DATA_PUBLIC(UINT64 *offset, BYTE *blob, TPM_NV_DATA_PUBLIC *
 
 	return TSS_SUCCESS;
 }
+
+TSS_RESULT
+Trspi_UnloadBlob_DA_INFO(UINT64 *offset, BYTE *blob, TPM_DA_INFO *info) {
+	if (!info) {
+		UINT16 vendorDataSize = 0;
+		Trspi_UnloadBlob_UINT16(offset, NULL, blob);
+		Trspi_UnloadBlob_BYTE(offset, NULL, blob);
+		Trspi_UnloadBlob_UINT16(offset, NULL, blob);
+		Trspi_UnloadBlob_UINT16(offset, NULL, blob);
+		Trspi_UnloadBlob_UINT16(offset, NULL, blob);
+		Trspi_UnloadBlob_UINT32(offset, NULL, blob);
+		Trspi_UnloadBlob_UINT32(offset, NULL, blob);
+		Trspi_UnloadBlob_UINT32(offset, &vendorDataSize, blob);
+		(*offset) += vendorDataSize;
+		return TSS_SUCCESS;
+	}
+
+	Trspi_UnloadBlob_UINT16(offset, &info->tag, blob);
+	Trspi_UnloadBlob_BYTE(offset, &info->state, blob);
+	Trspi_UnloadBlob_UINT16(offset, &info->currentCount, blob);
+	Trspi_UnloadBlob_UINT16(offset, &info->thresholdCount, blob);
+	Trspi_UnloadBlob_UINT16(offset, &info->actionAtThreshold.tag, blob);
+	Trspi_UnloadBlob_UINT32(offset, &info->actionAtThreshold.actions, blob);
+	Trspi_UnloadBlob_UINT32(offset, &info->actionDependValue, blob);
+	Trspi_UnloadBlob_UINT32(offset, &info->vendorDataSize, blob);
+	if (info->vendorDataSize > 0) {
+		if ((info->vendorData = malloc(info->vendorDataSize)) == NULL) {
+			LogError("malloc of %u bytes failed.", info->vendorDataSize);
+			return TSPERR(TSS_E_OUTOFMEMORY);
+		}
+
+		Trspi_UnloadBlob(offset, info->vendorDataSize, blob, info->vendorData);
+	} else {
+		info->vendorData = NULL;
+	}
+
+	return TSS_SUCCESS;
+}
+
