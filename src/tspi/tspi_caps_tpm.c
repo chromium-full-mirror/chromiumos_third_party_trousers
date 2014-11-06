@@ -242,6 +242,8 @@ Tspi_TPM_GetCapability(TSS_HTPM hTPM,			/* in */
 		break;
 	case TSS_TPMCAP_MFR:
 		tcsCapArea = TPM_CAP_MFR;
+		if ((ulSubCapLength == sizeof(UINT32)) && rgbSubCap)
+			tcsSubCap = *(UINT32 *)rgbSubCap;
 		endianFlag = FALSE;
 		break;
 	case TSS_TPMCAP_SYM_MODE:
@@ -286,6 +288,15 @@ Tspi_TPM_GetCapability(TSS_HTPM hTPM,			/* in */
 			tcsSubCap = *(UINT32 *)rgbSubCap;
 			break;
 		}
+		break;
+	case TSS_TPMCAP_DA_LOGIC:
+		if ((ulSubCapLength != sizeof(UINT32)) || !rgbSubCap)
+			return TSPERR(TSS_E_BAD_PARAMETER);
+		tcsCapArea = TPM_CAP_DA_LOGIC;
+		tcsSubCap = *(UINT32 *)rgbSubCap;
+		// Convert the sub-capability into a two-byte value.
+		ulSubCapLength = 2;
+		tcsSubCap <<= 16;
 		break;
 	default:
 		return TSPERR(TSS_E_BAD_PARAMETER);
