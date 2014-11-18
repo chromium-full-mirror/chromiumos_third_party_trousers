@@ -537,18 +537,22 @@ access_control(struct tcsd_thread_data *thread_data)
 		struct sockaddr_in *sa_in = (struct sockaddr_in *)sa;
 		uint32_t nloopaddr = htonl(INADDR_LOOPBACK);
 		if (memcmp(&sa_in->sin_addr.s_addr, &nloopaddr,
-					sizeof(struct sockaddr_in)) == 0)
+					sizeof(struct sockaddr_in)) == 0) {
 			is_localhost = 1;
-	else if (sa->sa_family == AF_INET6) {
+		}
+	} else if (sa->sa_family == AF_INET6) {
 		struct sockaddr_in6 *sa_in6 = (struct sockaddr_in6 *)sa;
 		if (memcmp(&sa_in6->sin6_addr.s6_addr, &in6addr_loopback,
-					sizeof(struct sockaddr_in6)) == 0)
+					sizeof(struct sockaddr_in6)) == 0) {
 			is_localhost = 1;
+		}
+	} else if (sa->sa_family == AF_UNIX) {
+		is_localhost = 1;
 	}
 
 	/* if the request comes from localhost, or is in the accepted ops list,
 	 * approve it */
-	if (is_localhost)
+	if (is_localhost) {
 		return 0;
 	} else {
 		while (tcsd_options.remote_ops[i]) {

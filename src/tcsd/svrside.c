@@ -19,6 +19,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netdb.h>
 #include <pwd.h>
 #if (defined (__OpenBSD__) || defined (__FreeBSD__))
@@ -48,10 +49,10 @@ char *tcsd_config_file = NULL;
 
 struct srv_sock_info {
 	int sd;
-	int domain; // AF_INET or AF_INET6
+	int domain; // AF_INET, AF_INET6, or AF_UNIX
 	socklen_t addr_len;
 };
-#define MAX_IP_PROTO 2
+#define MAX_IP_PROTO 3
 #define INVALID_ADDR_STR "<Invalid client address>"
 
 static void close_server_socks(struct srv_sock_info *socks_info)
@@ -347,11 +348,66 @@ int setup_ipv6_socket(struct srv_sock_info *ssi)
 	return -1;
 }
 
-int setup_server_sockets(struct srv_sock_info ssi[])
+int setup_unix_socket(struct srv_sock_info *ssi, struct passwd* pwd)
 {
-	int i=0;
+	struct sockaddr_un serv_addr;
+	int sd, opt;
 
-	ssi[0].sd = ssi[1].sd = -1;
+	ssi->sd = -1;
+	sd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (sd < 0) {
+		LogWarn("Failed unix socket: %s", strerror(errno));
+		goto err;
+	}
+
+	memset(&serv_addr, 0, sizeof (serv_addr));
+	serv_addr.sun_family = AF_UNIX;
+	strcpy(serv_addr.sun_path, TCSD_UNIX_SOCKET);
+	unlink(serv_addr.sun_path);
+
+	opt = 1;
+	setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+	if (bind(sd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)) < 0) {
+		LogWarn("Failed unix bind: %s - %s", serv_addr.sun_path, strerror(errno));
+		goto err;
+	}
+
+	if (chmod(serv_addr.sun_path, 0660) < 0) {
+		LogWarn("Failed unix chmod: %s - %s", serv_addr.sun_path, strerror(errno));
+		goto err;
+	}
+
+	if (pwd && chown(serv_addr.sun_path, pwd->pw_uid, pwd->pw_gid) < 0) {
+		LogWarn("Failed unix chown: %s - %s", serv_addr.sun_path, strerror(errno));
+		goto err;
+	}
+
+	if (listen(sd, TCSD_MAX_SOCKETS_QUEUED) < 0) {
+		LogWarn("Failed unix listen: %s - %s", serv_addr.sun_path, strerror(errno));
+		goto err;
+	}
+	ssi->domain = AF_UNIX;
+	ssi->sd = sd;
+	ssi->addr_len = sizeof(serv_addr);
+
+	return 0;
+
+ err:
+	if (sd != -1)
+		close(sd);
+
+	return -1;
+}
+
+int setup_server_sockets(struct srv_sock_info ssi[], struct passwd* pwd)
+{
+	int i;
+
+	for (i=0; i < MAX_IP_PROTO; i++) {
+		ssi[i].sd = -1;
+	}
+
+	i = 0;
 	// Only enqueue sockets successfully bound or that weren't disabled.
 	if (tcsd_options.disable_ipv4) {
 		LogWarn("IPv4 support disabled by configuration option");
@@ -363,21 +419,32 @@ int setup_server_sockets(struct srv_sock_info ssi[])
 	if (tcsd_options.disable_ipv6) {
 		LogWarn("IPv6 support disabled by configuration option");
 	} else {
-		setup_ipv6_socket(&ssi[i]);
+		if (setup_ipv6_socket(&ssi[i]) == 0)
+			i++;
 	}
 
-	// It's only a failure if both sockets are unavailable.
-	if ((ssi[0].sd == -1) && (ssi[1].sd == -1)) {
-		return -1;
+	if (tcsd_options.disable_unix) {
+		LogWarn("Unix support disabled by configuration option");
+	} else {
+		if (setup_unix_socket(&ssi[i], pwd) == 0)
+			i++;
 	}
 
-	return 0;
+	// It's only a failure if all sockets are unavailable.
+	for (i=0; i < MAX_IP_PROTO; i++) {
+		if (ssi[i].sd != -1)
+			return 0;
+	}
+
+	return -1;
 }
 
 char *fetch_hostname(struct sockaddr_storage *client_addr, socklen_t socklen)
 {
 	char buf[NI_MAXHOST];
 
+	if (client_addr->ss_family == AF_UNIX)
+		return strdup("localhost");
 	if (getnameinfo((struct sockaddr *)client_addr, socklen, buf,
 						sizeof(buf), NULL, 0, 0) != 0) {
 		LogWarn("Could not retrieve client address info");
@@ -423,7 +490,7 @@ main(int argc, char **argv)
 	sigset_t sigmask, termmask, oldsigmask;
 	struct sockaddr_storage client_addr;
 	struct srv_sock_info socks_info[MAX_IP_PROTO];
-	struct passwd *pwd;
+	struct passwd *pwd = NULL;
 	struct option long_options[] = {
 		{"help", 0, NULL, 'h'},
 		{"foreground", 0, NULL, 'f'},
@@ -473,15 +540,16 @@ main(int argc, char **argv)
 		}
 		return TCSERR(TSS_E_INTERNAL_ERROR);
 	}
-	if (setuid(pwd->pw_uid) == -1) {
-		LogError("setuid: %s", strerror(errno));
-	}
 #endif
 #endif
 
-	if (setup_server_sockets(socks_info) == -1) {
+	if (setup_server_sockets(socks_info, pwd) == -1) {
 		LogError("Could not create sockets to listen to connections. Aborting...");
 		return -1;
+	}
+
+	if (pwd && (setuid(pwd->pw_uid) == -1)) {
+		LogError("setuid: %s", strerror(errno));
 	}
 
 	if (getenv("TCSD_FOREGROUND") == NULL) {

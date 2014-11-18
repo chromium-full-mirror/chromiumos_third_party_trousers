@@ -53,6 +53,7 @@ struct tcsd_config_options options_list[] = {
 	{"all_platform_classes", opt_all_platform_classes},
 	{"disable_ipv4", opt_disable_ipv4},
 	{"disable_ipv6", opt_disable_ipv6},
+	{"disable_unix", opt_disable_unix},
 	{NULL, 0}
 };
 
@@ -85,8 +86,9 @@ init_tcsd_config(struct tcsd_config *conf)
 	conf->exclusive_transport = 0;
 	conf->host_platform_class = NULL;
 	conf->all_platform_classes = NULL;
-	conf->disable_ipv4 = 0;
-	conf->disable_ipv6 = 0;
+	conf->disable_ipv4 = 1;
+	conf->disable_ipv6 = 1;
+	conf->disable_unix = 0;
 }
 
 TSS_RESULT
@@ -172,6 +174,9 @@ config_set_defaults(struct tcsd_config *conf)
 
 	if (conf->unset & TCSD_OPTION_DISABLE_IPV6)
 		conf->disable_ipv6 = TCSD_DEFAULT_DISABLE_IPV6;
+
+	if (conf->unset & TCSD_OPTION_DISABLE_UNIX)
+		conf->disable_unix = TCSD_DEFAULT_DISABLE_UNIX;
 }
 
 int
@@ -658,6 +663,17 @@ read_conf_line(char *buf, int line_num, struct tcsd_config *conf)
 		} else {
 			conf->disable_ipv6 = tmp_int;
 			conf->unset &= ~TCSD_OPTION_DISABLE_IPV6;
+		}
+		break;
+	case opt_disable_unix:
+		tmp_int = atoi(arg);
+		if (tmp_int < 0 || tmp_int > 1) {
+			LogError("Config option \"disable_unix\" out of range."
+				 " %s:%d: \"%d\"", tcsd_config_file, line_num, tmp_int);
+			return TCSERR(TSS_E_INTERNAL_ERROR);
+		} else {
+			conf->disable_unix = tmp_int;
+			conf->unset &= ~TCSD_OPTION_DISABLE_UNIX;
 		}
 		break;
 	default:

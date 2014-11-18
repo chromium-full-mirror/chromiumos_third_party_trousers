@@ -13,6 +13,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -457,6 +458,36 @@ err_exit:
 	return result;
 }
 
+TSS_RESULT
+get_unix_socket(int *sd)
+{
+	int tmp_sd;
+	struct sockaddr_un addr;
+
+	tmp_sd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (tmp_sd == -1) {
+		LogWarn("Failed unix socket: %s", strerror(errno));
+		goto err_exit;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	strcpy(addr.sun_path, TCSD_UNIX_SOCKET);
+
+	if (connect(tmp_sd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
+		LogWarn("Failed unix connect: %s - %s", addr.sun_path, strerror(errno));
+		goto err_exit;
+	}
+
+	*sd = tmp_sd;
+	return TSS_SUCCESS;
+
+err_exit:
+	if (tmp_sd != -1)
+		close(tmp_sd);
+	return TSPERR(TSS_E_CONNECTION_FAILED);
+}
+
 /* TODO: Future work - remove socket creation/manipulation from RPC-specific file */
 TSS_RESULT
 get_socket(struct host_table_entry *hte, int *sd)
@@ -466,6 +497,12 @@ get_socket(struct host_table_entry *hte, int *sd)
 	int rv;
 	TSS_RESULT result = TSS_SUCCESS;
 
+	if (strcmp((char*)hte->hostname, TSS_LOCALHOST_STRING) == 0) {
+		// If a unix socket is enabled, use it.
+		if (get_unix_socket(sd) == TSS_SUCCESS) {
+			goto exit;
+		}
+	}
 	__tspi_memset(&hints, 0, sizeof(hints));
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_NUMERICSERV;
