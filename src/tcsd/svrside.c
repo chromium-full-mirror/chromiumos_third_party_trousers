@@ -473,7 +473,9 @@ main(int argc, char **argv)
 		}
 		return TCSERR(TSS_E_INTERNAL_ERROR);
 	}
-	setuid(pwd->pw_uid);
+	if (setuid(pwd->pw_uid) == -1) {
+		LogError("setuid: %s", strerror(errno));
+	}
 #endif
 #endif
 

@@ -21,6 +21,8 @@ MUTEX_DECLARE_EXTERN(disk_cache_lock);
 
 int		   get_file();
 int		   put_file(int);
+TSS_RESULT	   read_data(int, void *, UINT32);
+TSS_RESULT	   write_data(int, void *, UINT32);
 void		   close_file(int);
 void		   ps_destroy();
 int		   write_key_init(int, UINT32, UINT32, UINT32);

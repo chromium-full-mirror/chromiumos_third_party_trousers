@@ -2813,7 +2813,7 @@ Trspi_UnloadBlob_NV_DATA_PUBLIC(UINT64 *offset, BYTE *blob, TPM_NV_DATA_PUBLIC *
 TSS_RESULT
 Trspi_UnloadBlob_DA_INFO(UINT64 *offset, BYTE *blob, TPM_DA_INFO *info) {
 	if (!info) {
-		UINT16 vendorDataSize = 0;
+		UINT32 vendorDataSize = 0;
 		Trspi_UnloadBlob_UINT16(offset, NULL, blob);
 		Trspi_UnloadBlob_BYTE(offset, NULL, blob);
 		Trspi_UnloadBlob_UINT16(offset, NULL, blob);

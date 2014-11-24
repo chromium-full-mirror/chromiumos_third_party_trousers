@@ -485,7 +485,7 @@ Tspi_TPM_ActivateIdentity(TSS_HTPM hTPM,			/* in */
 						      FALSE, &digest, &ownerAuth)))
 			return result;
 	} else {
-		if ((result = authsess_xsap_init(tspContext, hTPM, NULL,
+		if ((result = authsess_xsap_init(tspContext, hTPM, 0,
 						 TSS_AUTH_POLICY_REQUIRED,
 						 TPM_ORD_ActivateIdentity,
 						 TPM_ET_OWNER, &xsap)))

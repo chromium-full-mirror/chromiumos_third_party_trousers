@@ -492,11 +492,11 @@ tpm_rsp_parse(TPM_COMMAND_CODE ordinal, BYTE *b, UINT32 len, ...)
 			return TCSERR(TSS_E_INTERNAL_ERROR);
 		}
 
-		if (auth1 && auth2) {
+		if (auth1) {
 			offset1 = offset2 = len - (2 * TSS_TPM_RSP_BLOB_AUTH_LEN);
 			UnloadBlob_Auth(&offset1, b, auth1);
 			UnloadBlob_Auth(&offset1, b, auth2);
-		} else if (auth2) {
+		} else {
 			offset1 = offset2 = len - TSS_TPM_RSP_BLOB_AUTH_LEN;
 			UnloadBlob_Auth(&offset1, b, auth2);
 		}

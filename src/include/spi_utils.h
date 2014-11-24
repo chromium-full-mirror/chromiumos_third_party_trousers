@@ -44,10 +44,12 @@ MUTEX_DECLARE_EXTERN(mem_cache_lock);
 #define TSS_PSFILE_INCREMENT_NUM_KEYS	1
 #define TSS_PSFILE_DECREMENT_NUM_KEYS	0
 
-#ifdef __GNUC__
-#define __no_optimize __attribute__((optimize("O0")))
+#ifdef __clang__
+# define __no_optimize __attribute__((optnone))
+#elif defined(__GNUC__)
+# define __no_optimize __attribute__((optimize("O0")))
 #else
-#define __no_optimize
+# define __no_optimize
 #endif
 
 void *calloc_tspi(TSS_HCONTEXT, UINT32);
