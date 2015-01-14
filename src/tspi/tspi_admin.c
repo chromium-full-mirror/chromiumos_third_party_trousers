@@ -20,6 +20,7 @@
 #include "capabilities.h"
 #include "tsplog.h"
 #include "obj.h"
+#include "authsess.h"
 
 
 TSS_RESULT
@@ -35,12 +36,17 @@ Tspi_TPM_SetStatus(TSS_HTPM hTPM,	/* in */
 	TSS_HPOLICY hOperatorPolicy;
 	Trspi_HashCtx hashCtx;
 	UINT32 tpmVersion;
+	UINT32 delegationType = TSS_DELEGATIONTYPE_NONE;
+	struct authsess *xsap = NULL;
 
 	LogTrace();
 	if ((result = obj_tpm_get_tsp_context(hTPM, &tspContext)))
 		return result;
 
 	if ((result = obj_tpm_get_policy(hTPM, TSS_POLICY_USAGE, &hPolicy)))
+		return result;
+
+	if ((result = obj_policy_get_delegation_type(hPolicy, &delegationType)))
 		return result;
 
 	switch (statusFlag) {
@@ -204,21 +210,48 @@ Tspi_TPM_SetStatus(TSS_HTPM hTPM,	/* in */
 		if ((result |= Trspi_HashFinal(&hashCtx, hashDigest.digest)))
 			return result;
 
-		if ((result = secret_PerformAuth_OIAP(hTPM, TPM_ORD_ResetLockValue, hPolicy,
-						      FALSE, &hashDigest, &auth)))
-			return result;
+		if (delegationType == TSS_DELEGATIONTYPE_NONE) {
+			if ((result = secret_PerformAuth_OIAP(hTPM, TPM_ORD_ResetLockValue, hPolicy,
+							      FALSE, &hashDigest, &auth)))
+				return result;
+			pAuth = &auth;
+		} else {
+			if ((result = authsess_xsap_init(tspContext, hTPM, NULL,
+							 TSS_AUTH_POLICY_REQUIRED,
+							 TPM_ORD_ResetLockValue,
+							 TPM_ET_OWNER, &xsap)))
+				return result;
+			if ((result = authsess_xsap_hmac(xsap, &hashDigest))) {
+				authsess_free(xsap);
+				return result;
+			}
+			pAuth = xsap->pAuth;
+		}
 
-		if ((result = TCS_API(tspContext)->ResetLockValue(tspContext, &auth)))
+		if ((result = TCS_API(tspContext)->ResetLockValue(tspContext, pAuth))) {
+			authsess_free(xsap);
 			return result;
+		}
 
 		result = Trspi_HashInit(&hashCtx, TSS_HASH_SHA1);
 		result |= Trspi_Hash_UINT32(&hashCtx, result);
 		result |= Trspi_Hash_UINT32(&hashCtx, TPM_ORD_ResetLockValue);
-		if ((result |= Trspi_HashFinal(&hashCtx, hashDigest.digest)))
+		if ((result |= Trspi_HashFinal(&hashCtx, hashDigest.digest))) {
+			authsess_free(xsap);
 			return result;
+		}
 
-		if ((result = obj_policy_validate_auth_oiap(hPolicy, &hashDigest, &auth)))
-			return result;
+		if (delegationType == TSS_DELEGATIONTYPE_NONE) {
+			if ((result = obj_policy_validate_auth_oiap(hPolicy, &hashDigest, &auth)))
+				return result;
+		} else {
+			if ((result = authsess_xsap_verify(xsap, &hashDigest))) {
+				authsess_free(xsap);
+				return result;
+			}
+		}
+		authsess_free(xsap);
+		xsap = NULL;
 		break;
 #endif
 #ifndef TSS_SPEC_COMPLIANCE
