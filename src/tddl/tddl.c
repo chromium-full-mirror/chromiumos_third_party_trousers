@@ -19,6 +19,8 @@
 #include "trousers/tss.h"
 #include "trousers_types.h"
 #include "linux/tpm.h"
+#include "metrics/c_metrics_library.h"
+#include "tcs_utils.h"
 #include "tcslog.h"
 #include "tddl.h"
 
@@ -161,6 +163,10 @@ Tddli_TransmitData(BYTE * pTransmitBuf, UINT32 TransmitBufLen, BYTE * pReceiveBu
 		   UINT32 * pReceiveBufLen)
 {
 	int sizeResult;
+	UINT16 request_tag;
+	TSS_RESULT result;
+	static CMetricsLibrary metrics_library_handle = NULL;
+	TSS_BOOL is_auth;
 
 	if (TransmitBufLen > TDDL_TXBUF_SIZE) {
 		LogError("buffer size handed to TDDL is too large! (%u bytes)", TransmitBufLen);
@@ -169,6 +175,11 @@ Tddli_TransmitData(BYTE * pTransmitBuf, UINT32 TransmitBufLen, BYTE * pReceiveBu
 
 	memcpy(txBuffer, pTransmitBuf, TransmitBufLen);
 	LogDebug("Calling write to driver");
+	/* Low-level intercept of errors returned by the TPM for
+	 * statistical purposes.
+	 */
+	request_tag = Decode_UINT16(txBuffer);
+	is_auth = (request_tag == 0xc2) || (request_tag == 0xc3);
 
 	if (use_in_socket) {
 		Tddli_Close();
@@ -230,6 +241,25 @@ Tddli_TransmitData(BYTE * pTransmitBuf, UINT32 TransmitBufLen, BYTE * pReceiveBu
 	*pReceiveBufLen = sizeResult;
 
 	memcpy(pReceiveBuf, txBuffer, *pReceiveBufLen);
+	/* TPM returned a valid response packet into txBuffer.  Extract result
+	 * code and ship stats.
+	 */
+	result = Decode_UINT32(pReceiveBuf + 6);
+	if (metrics_library_handle == NULL) {
+		metrics_library_handle = CMetricsLibraryNew();
+		if (metrics_library_handle != NULL)
+			CMetricsLibraryInit(metrics_library_handle);
+	}
+	if (metrics_library_handle != NULL) {
+		CMetricsLibrarySendSparseToUMA(metrics_library_handle,
+					       "Platform.TPM.ErrorCode",
+					       result);
+		if (is_auth)
+			CMetricsLibrarySendSparseToUMA(
+				metrics_library_handle,
+				"Platform.TPM.AuthErrorCode",
+				result);
+	}
 	return TSS_SUCCESS;
 }
 
