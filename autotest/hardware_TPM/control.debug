@@ -15,7 +15,7 @@ Runs a single suite from the TPM tests. For debugging purposes only.
 
 Example:
 
-TEST_TPM_SUITE="delegation" run_remote_tests.sh --board x86-generic --nocleanup --remote <ip> hardware_TPM/control.debug
+TEST_TPM_SUITE="delegation" test_that --board x86-generic --nocleanup <ip> hardware_TPM/control.debug
 
 """
 
