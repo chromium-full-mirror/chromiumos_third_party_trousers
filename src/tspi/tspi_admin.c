@@ -216,7 +216,7 @@ Tspi_TPM_SetStatus(TSS_HTPM hTPM,	/* in */
 				return result;
 			pAuth = &auth;
 		} else {
-			if ((result = authsess_xsap_init(tspContext, hTPM, NULL,
+			if ((result = authsess_xsap_init(tspContext, hTPM, 0,
 							 TSS_AUTH_POLICY_REQUIRED,
 							 TPM_ORD_ResetLockValue,
 							 TPM_ET_OWNER, &xsap)))
