@@ -1,0 +1,15 @@
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+[Unit]
+Description=Probe for the TPM device
+After=boot-services.target
+
+[Service]
+Type=oneshot
+
+# Check that the TPM module is compiled in the kernel.
+ExecStart=-/bin/sh -c "test -e /sys/class/misc/tpm0 || logger -t %n \"tpm \
+	is non-functional or tpm driver is missing\""
+ExecStart=-/usr/bin/systemctl start tcsd.service

@@ -1,0 +1,14 @@
+# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+[Unit]
+Description=TrouSerS daemon
+PartOf=boot-services.target
+[Service]
+Restart=always
+Type=forking
+ExecStartPre=/bin/sh /usr/share/cros/init/tcsd-pre-start.sh
+ExecStart=/usr/sbin/tcsd
+ExecStopPost=-/bin/sh -c "tpmc savestate || \
+	logger -t %n \"final tpmc savestate: $?\""
