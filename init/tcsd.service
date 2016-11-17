@@ -5,6 +5,8 @@
 [Unit]
 Description=TrouSerS daemon
 PartOf=boot-services.target
+After=boot-services.target tpm-probe.service
+
 [Service]
 Restart=always
 Type=forking

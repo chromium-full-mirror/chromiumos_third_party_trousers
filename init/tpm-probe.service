@@ -12,4 +12,3 @@ Type=oneshot
 # Check that the TPM module is compiled in the kernel.
 ExecStart=-/bin/sh -c "test -e /sys/class/misc/tpm0 || logger -t %n \"tpm \
 	is non-functional or tpm driver is missing\""
-ExecStart=-/usr/bin/systemctl start tcsd.service
