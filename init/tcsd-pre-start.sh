@@ -37,8 +37,6 @@ if [ -e "$TPMDIR/owned" ]; then
       umask 0177
       cp --no-preserve=mode /etc/trousers/system.data.auth \
         /var/lib/tpm/system.data
-      umask 0133
-      touch /var/lib/.tpm_owned
     fi
   fi
 fi
