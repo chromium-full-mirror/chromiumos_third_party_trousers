@@ -20,6 +20,7 @@
 #include "capabilities.h"
 #include "tsplog.h"
 #include "obj.h"
+#include "authsess.h"
 
 
 TSS_RESULT
@@ -32,7 +33,8 @@ Tspi_TPM_AuthorizeMigrationTicket(TSS_HTPM hTPM,			/* in */
 	UINT64 offset;
 	TCPA_DIGEST digest;
 	TCPA_RESULT result;
-	TSS_HPOLICY hOwnerPolicy;
+	TSS_HPOLICY hPolicy;
+	UINT32 delegationType = TSS_DELEGATIONTYPE_NONE;
 	UINT32 migrationKeySize;
 	BYTE *migrationKeyBlob;
 	TSS_KEY tssKey;
@@ -42,17 +44,26 @@ Tspi_TPM_AuthorizeMigrationTicket(TSS_HTPM hTPM,			/* in */
 	TSS_HCONTEXT tspContext;
 	UINT32 tpmMigrationScheme;
 	Trspi_HashCtx hashCtx;
+	TPM_AUTH *pAuth;
+	struct authsess *xsap = NULL;
 
 	LogTrace();
+	if (pulMigTicketLength)
+		*pulMigTicketLength = 0;
+	if (prgbMigTicket)
+		*prgbMigTicket = NULL;
 	if (pulMigTicketLength == NULL || prgbMigTicket == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
 	if ((result = obj_tpm_get_tsp_context(hTPM, &tspContext)))
-		return result;
+		goto done;
 
 	/*  get the tpm Policy */
-	if ((result = obj_tpm_get_policy(hTPM, TSS_POLICY_USAGE, &hOwnerPolicy)))
-		return result;
+	if ((result = obj_tpm_get_policy(hTPM, TSS_POLICY_USAGE, &hPolicy)))
+		goto done;
+
+	if ((result = obj_policy_get_delegation_type(hPolicy, &delegationType)))
+		goto done;
 
 	switch (migrationScheme) {
 		case TSS_MS_MIGRATE:
@@ -74,20 +85,20 @@ Tspi_TPM_AuthorizeMigrationTicket(TSS_HTPM hTPM,			/* in */
 			break;
 #endif
 		default:
-			return TSPERR(TSS_E_BAD_PARAMETER);
-			break;
+			result = TSPERR(TSS_E_BAD_PARAMETER);
+			goto done;
 	}
 
 	/*  Get the migration key blob */
 	if ((result = obj_rsakey_get_blob(hMigrationKey, &migrationKeySize, &migrationKeyBlob)))
-		return result;
+		goto done;
 
 	/* First, turn the keyBlob into a TSS_KEY structure */
 	offset = 0;
 	__tspi_memset(&tssKey, 0, sizeof(TSS_KEY));
 	if ((result = UnloadBlob_TSS_KEY(&offset, migrationKeyBlob, &tssKey))) {
 		free_tspi(tspContext, migrationKeyBlob);
-		return result;
+		goto done;
 	}
 	free_tspi(tspContext, migrationKeyBlob);
 
@@ -104,43 +115,61 @@ Tspi_TPM_AuthorizeMigrationTicket(TSS_HTPM hTPM,			/* in */
 	result |= Trspi_Hash_UINT16(&hashCtx, tpmMigrationScheme);
 	result |= Trspi_HashUpdate(&hashCtx, pubKeySize, pubKeyBlob);
 	if ((result |= Trspi_HashFinal(&hashCtx, digest.digest)))
-		return result;
+		goto done;
 
-	if ((result = secret_PerformAuth_OIAP(hTPM, TPM_ORD_AuthorizeMigrationKey, hOwnerPolicy,
-					      FALSE, &digest, &ownerAuth)))
-		return result;
+	if (delegationType == TSS_DELEGATIONTYPE_NONE) {
+		if ((result = secret_PerformAuth_OIAP(hTPM, TPM_ORD_AuthorizeMigrationKey,
+				hPolicy, FALSE, &digest, &ownerAuth)))
+			goto done;
+		pAuth = &ownerAuth;
+	} else {
+		if ((result = authsess_xsap_init(tspContext, hTPM, 0,
+				TSS_AUTH_POLICY_REQUIRED, TPM_ORD_AuthorizeMigrationKey, TPM_ET_OWNER,
+				&xsap)))
+			goto done;
+		if ((result = authsess_xsap_hmac(xsap, &digest)))
+			goto done;
+		pAuth = xsap->pAuth;
+	}
 
 	/* Send command */
 	if ((result = TCS_API(tspContext)->AuthorizeMigrationKey(tspContext, migrationScheme,
-								 pubKeySize, pubKeyBlob, &ownerAuth,
+								 pubKeySize, pubKeyBlob, pAuth,
 								 pulMigTicketLength,
-								 prgbMigTicket)))
-		return result;
+								 prgbMigTicket))) {
+		/* Clean up the garbage pointer to the already freed memory. */
+		*prgbMigTicket = NULL;
+		goto done;
+	}
 
 	/* Validate Auth */
 	result = Trspi_HashInit(&hashCtx, TSS_HASH_SHA1);
 	result |= Trspi_Hash_UINT32(&hashCtx, result);
 	result |= Trspi_Hash_UINT32(&hashCtx, TPM_ORD_AuthorizeMigrationKey);
 	result |= Trspi_HashUpdate(&hashCtx, *pulMigTicketLength, *prgbMigTicket);
-	if ((result |= Trspi_HashFinal(&hashCtx, digest.digest))) {
-		*pulMigTicketLength = 0;
-		free(*prgbMigTicket);
-		return result;
+	if ((result |= Trspi_HashFinal(&hashCtx, digest.digest)))
+		goto done;
+
+	if (delegationType == TSS_DELEGATIONTYPE_NONE) {
+		if ((result = obj_policy_validate_auth_oiap(hPolicy, &digest, pAuth)))
+			goto done;
+	} else {
+		if ((result = authsess_xsap_verify(xsap, &digest)))
+			goto done;
 	}
 
-	if ((result = obj_policy_validate_auth_oiap(hOwnerPolicy, &digest, &ownerAuth))) {
+	if ((result = __tspi_add_mem_entry(tspContext, *prgbMigTicket)))
+		goto done;
+
+done:
+	if (result) {
 		*pulMigTicketLength = 0;
 		free(*prgbMigTicket);
-		return result;
+		*prgbMigTicket = NULL;
 	}
+	authsess_free(xsap);
 
-	if ((result = __tspi_add_mem_entry(tspContext, *prgbMigTicket))) {
-		*pulMigTicketLength = 0;
-		free(*prgbMigTicket);
-		return result;
-	}
-
-	return TSS_SUCCESS;
+	return result;
 }
 
 TSS_RESULT

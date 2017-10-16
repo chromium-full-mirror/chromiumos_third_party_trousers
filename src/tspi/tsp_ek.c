@@ -20,7 +20,7 @@
 #include "capabilities.h"
 #include "tsplog.h"
 #include "obj.h"
-
+#include "authsess.h"
 
 TSS_RESULT
 owner_get_pubek(TSS_HCONTEXT tspContext, TSS_HTPM hTPM, TSS_HKEY *hPubEk)
@@ -28,17 +28,22 @@ owner_get_pubek(TSS_HCONTEXT tspContext, TSS_HTPM hTPM, TSS_HKEY *hPubEk)
 	TSS_RESULT result;
 	UINT32 tpmVersion, pubEKSize;
 	TSS_HPOLICY hPolicy;
+	UINT32 delegationType = TSS_DELEGATIONTYPE_NONE;
 	Trspi_HashCtx hashCtx;
 	BYTE *pubEK = NULL;
 	TSS_HKEY hRetKey;
 	TPM_AUTH ownerAuth;
 	TPM_DIGEST digest;
-
+	TPM_AUTH *pAuth;
+	struct authsess *xsap = NULL;
 
 	if ((result = obj_context_get_tpm_version(tspContext, &tpmVersion)))
 		return result;
 
 	if ((result = obj_tpm_get_policy(hTPM, TSS_POLICY_USAGE, &hPolicy)))
+		return result;
+
+	if ((result = obj_policy_get_delegation_type(hPolicy, &delegationType)))
 		return result;
 
 	switch (tpmVersion) {
@@ -49,13 +54,23 @@ owner_get_pubek(TSS_HCONTEXT tspContext, TSS_HTPM hTPM, TSS_HKEY *hPubEk)
 		if ((result |= Trspi_HashFinal(&hashCtx, digest.digest)))
 			goto done;
 
-		if ((result = secret_PerformAuth_OIAP(hTPM, TPM_ORD_OwnerReadInternalPub,
-						      hPolicy, FALSE, &digest, &ownerAuth)))
-			goto done;
+		if (delegationType == TSS_DELEGATIONTYPE_NONE) {
+			if ((result = secret_PerformAuth_OIAP(hTPM, TPM_ORD_OwnerReadInternalPub,
+					hPolicy, FALSE, &digest, &ownerAuth)))
+				goto done;
+			pAuth = &ownerAuth;
+		} else {
+			if ((result = authsess_xsap_init(tspContext, hTPM, 0,
+					TSS_AUTH_POLICY_REQUIRED, TPM_ORD_OwnerReadInternalPub, TPM_ET_OWNER,
+					&xsap)))
+				goto done;
+			if ((result = authsess_xsap_hmac(xsap, &digest)))
+				goto done;
+			pAuth = xsap->pAuth;
+		}
 
-		if ((result = TCS_API(tspContext)->OwnerReadInternalPub(tspContext, TPM_KH_EK,
-									&ownerAuth, &pubEKSize,
-									&pubEK)))
+		if ((result = TCS_API(tspContext)->OwnerReadInternalPub(tspContext,
+				TPM_KH_EK, pAuth, &pubEKSize, &pubEK)))
 			goto done;
 
 		result = Trspi_HashInit(&hashCtx, TSS_HASH_SHA1);
@@ -65,8 +80,15 @@ owner_get_pubek(TSS_HCONTEXT tspContext, TSS_HTPM hTPM, TSS_HKEY *hPubEk)
 		if ((result |= Trspi_HashFinal(&hashCtx, digest.digest)))
 			goto done;
 
-		if ((result = obj_policy_validate_auth_oiap(hPolicy, &digest, &ownerAuth)))
-			goto done;
+		if (delegationType == TSS_DELEGATIONTYPE_NONE) {
+			if ((result = obj_policy_validate_auth_oiap(hPolicy, &digest,
+					&ownerAuth)))
+				goto done;
+		} else {
+			if ((result = authsess_xsap_verify(xsap, &digest)))
+				goto done;
+		}
+
 		break;
 	default:
 		result = Trspi_HashInit(&hashCtx, TSS_HASH_SHA1);
@@ -74,12 +96,23 @@ owner_get_pubek(TSS_HCONTEXT tspContext, TSS_HTPM hTPM, TSS_HKEY *hPubEk)
 		if ((result |= Trspi_HashFinal(&hashCtx, digest.digest)))
 			goto done;
 
-		if ((result = secret_PerformAuth_OIAP(hTPM, TPM_ORD_OwnerReadPubek, hPolicy, FALSE,
-						      &digest, &ownerAuth)))
-			goto done;
+		if (delegationType == TSS_DELEGATIONTYPE_NONE) {
+			if ((result = secret_PerformAuth_OIAP(hTPM, TPM_ORD_OwnerReadPubek,
+					hPolicy, FALSE, &digest, &ownerAuth)))
+				goto done;
+			pAuth = &ownerAuth;
+		} else {
+			if ((result = authsess_xsap_init(tspContext, hTPM, 0,
+					TSS_AUTH_POLICY_REQUIRED, TPM_ORD_OwnerReadPubek, TPM_ET_OWNER,
+					&xsap)))
+				goto done;
+			if ((result = authsess_xsap_hmac(xsap, &digest)))
+				goto done;
+			pAuth = xsap->pAuth;
+		}
 
-		if ((result = TCS_API(tspContext)->OwnerReadPubek(tspContext, &ownerAuth,
-								  &pubEKSize, &pubEK)))
+		if ((result = TCS_API(tspContext)->OwnerReadPubek(tspContext, pAuth,
+				&pubEKSize, &pubEK)))
 			goto done;
 
 		result = Trspi_HashInit(&hashCtx, TSS_HASH_SHA1);
@@ -89,8 +122,14 @@ owner_get_pubek(TSS_HCONTEXT tspContext, TSS_HTPM hTPM, TSS_HKEY *hPubEk)
 		if ((result |= Trspi_HashFinal(&hashCtx, digest.digest)))
 			goto done;
 
-		if ((result = obj_policy_validate_auth_oiap(hPolicy, &digest, &ownerAuth)))
-			goto done;
+		if (delegationType == TSS_DELEGATIONTYPE_NONE) {
+			if ((result = obj_policy_validate_auth_oiap(hPolicy, &digest,
+					&ownerAuth)))
+				goto done;
+		} else {
+			if ((result = authsess_xsap_verify(xsap, &digest)))
+				goto done;
+		}
 
 		break;
 	}
@@ -104,5 +143,6 @@ owner_get_pubek(TSS_HCONTEXT tspContext, TSS_HTPM hTPM, TSS_HKEY *hPubEk)
 	*hPubEk = hRetKey;
 done:
 	free(pubEK);
+	authsess_free(xsap);
 	return result;
 }

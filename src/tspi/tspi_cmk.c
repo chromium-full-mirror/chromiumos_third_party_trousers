@@ -20,6 +20,7 @@
 #include "spi_utils.h"
 #include "obj.h"
 #include "tsplog.h"
+#include "authsess.h"
 
 
 TSS_RESULT
@@ -71,6 +72,7 @@ Tspi_TPM_CMKApproveMA(TSS_HTPM     hTpm,	/* in */
 {
 	TSS_HCONTEXT hContext;
 	TSS_HPOLICY hPolicy;
+	UINT32 delegationType = TSS_DELEGATIONTYPE_NONE;
 	UINT32 blobSize;
 	BYTE *blob;
 	TPM_DIGEST msaDigest;
@@ -78,6 +80,8 @@ Tspi_TPM_CMKApproveMA(TSS_HTPM     hTpm,	/* in */
 	Trspi_HashCtx hashCtx;
 	TPM_DIGEST digest;
 	TPM_AUTH ownerAuth;
+	TPM_AUTH *pAuth;
+	struct authsess *xsap = NULL;
 	TSS_RESULT result;
 
 	LogTrace();
@@ -85,6 +89,9 @@ Tspi_TPM_CMKApproveMA(TSS_HTPM     hTpm,	/* in */
 		return result;
 
 	if ((result = obj_tpm_get_policy(hTpm, TSS_POLICY_USAGE, &hPolicy)))
+		return result;
+
+	if ((result = obj_policy_get_delegation_type(hPolicy, &delegationType)))
 		return result;
 
 	if ((result = obj_migdata_get_msa_digest(hMaAuthData, &blobSize, &blob)))
@@ -98,25 +105,44 @@ Tspi_TPM_CMKApproveMA(TSS_HTPM     hTpm,	/* in */
 	if ((result |= Trspi_HashFinal(&hashCtx, digest.digest)))
 		return result;
 
-	if ((result = secret_PerformAuth_OIAP(hTpm, TPM_ORD_CMK_ApproveMA,
-			hPolicy, FALSE, &digest, &ownerAuth)))
-		return result;
+	if (delegationType == TSS_DELEGATIONTYPE_NONE) {
+		if ((result = secret_PerformAuth_OIAP(hTpm, TPM_ORD_CMK_ApproveMA,
+				hPolicy, FALSE, &digest, &ownerAuth)))
+			goto done;
+		pAuth = &ownerAuth;
+	} else {
+		if ((result = authsess_xsap_init(hContext, hTpm, 0,
+				TSS_AUTH_POLICY_REQUIRED, TPM_ORD_CMK_ApproveMA, TPM_ET_OWNER, &xsap)))
+			goto done;
+		if ((result = authsess_xsap_hmac(xsap, &digest)))
+			goto done;
+		pAuth = xsap->pAuth;
+	}
 
-	if ((result = RPC_CMK_ApproveMA(hContext, msaDigest, &ownerAuth, &msaHmac)))
-		return result;
+	if ((result = RPC_CMK_ApproveMA(hContext, msaDigest, pAuth, &msaHmac)))
+		goto done;
 
 	result = Trspi_HashInit(&hashCtx, TSS_HASH_SHA1);
 	result |= Trspi_Hash_UINT32(&hashCtx, result);
 	result |= Trspi_Hash_UINT32(&hashCtx, TPM_ORD_CMK_ApproveMA);
 	result |= Trspi_Hash_HMAC(&hashCtx, msaHmac.digest);
 	if ((result |= Trspi_HashFinal(&hashCtx, digest.digest)))
-		return result;
+		goto done;
 
-	if ((result = obj_policy_validate_auth_oiap(hPolicy, &digest, &ownerAuth)))
-		return result;
+	if (delegationType == TSS_DELEGATIONTYPE_NONE) {
+		if ((result = obj_policy_validate_auth_oiap(hPolicy, &digest, pAuth)))
+			goto done;
+	} else {
+		if ((result = authsess_xsap_verify(xsap, &digest)))
+			goto done;
+	}
 
-	if ((result = obj_migdata_set_msa_hmac(hMaAuthData, sizeof(msaHmac.digest), msaHmac.digest)))
-		return result;
+	if ((result = obj_migdata_set_msa_hmac(hMaAuthData, sizeof(msaHmac.digest),
+			msaHmac.digest)))
+		goto done;
+
+done:
+	authsess_free(xsap);
 
 	return result;
 }
@@ -128,6 +154,7 @@ Tspi_TPM_CMKCreateTicket(TSS_HTPM     hTpm,		/* in */
 {
 	TSS_HCONTEXT hContext;
 	TSS_HPOLICY hPolicy;
+	UINT32 delegationType = TSS_DELEGATIONTYPE_NONE;
 	UINT32 pubKeySize;
 	BYTE *pubKey = NULL;
 	UINT32 blobSize;
@@ -139,6 +166,8 @@ Tspi_TPM_CMKCreateTicket(TSS_HTPM     hTpm,		/* in */
 	Trspi_HashCtx hashCtx;
 	TPM_DIGEST digest;
 	TPM_AUTH ownerAuth;
+	TPM_AUTH *pAuth;
+	struct authsess *xsap = NULL;
 	TSS_RESULT result;
 
 	LogTrace();
@@ -146,6 +175,9 @@ Tspi_TPM_CMKCreateTicket(TSS_HTPM     hTpm,		/* in */
 		return result;
 
 	if ((result = obj_tpm_get_policy(hTpm, TSS_POLICY_USAGE, &hPolicy)))
+		return result;
+
+	if ((result = obj_policy_get_delegation_type(hPolicy, &delegationType)))
 		return result;
 
 	if ((result = obj_rsakey_get_pub_blob(hVerifyKey, &pubKeySize, &pubKey)))
@@ -168,12 +200,23 @@ Tspi_TPM_CMKCreateTicket(TSS_HTPM     hTpm,		/* in */
 	if ((result |= Trspi_HashFinal(&hashCtx, digest.digest)))
 		goto done;
 
-	if ((result = secret_PerformAuth_OIAP(hTpm, TPM_ORD_CMK_CreateTicket,
-			hPolicy, FALSE, &digest, &ownerAuth)))
-		goto done;
+	if (delegationType == TSS_DELEGATIONTYPE_NONE) {
+		if ((result = secret_PerformAuth_OIAP(hTpm, TPM_ORD_CMK_CreateTicket,
+				hPolicy, FALSE, &digest, &ownerAuth)))
+			goto done;
+		pAuth = &ownerAuth;
+	} else {
+		if ((result = authsess_xsap_init(hContext, hTpm, 0,
+				TSS_AUTH_POLICY_REQUIRED, TPM_ORD_CMK_CreateTicket, TPM_ET_OWNER,
+				&xsap)))
+			goto done;
+		if ((result = authsess_xsap_hmac(xsap, &digest)))
+			goto done;
+		pAuth = xsap->pAuth;
+	}
 
 	if ((result = RPC_CMK_CreateTicket(hContext, pubKeySize, pubKey, sigData, sigSize, sig,
-			&ownerAuth, &sigTicket)))
+			pAuth, &sigTicket)))
 		goto done;
 
 	result = Trspi_HashInit(&hashCtx, TSS_HASH_SHA1);
@@ -183,8 +226,13 @@ Tspi_TPM_CMKCreateTicket(TSS_HTPM     hTpm,		/* in */
 	if ((result |= Trspi_HashFinal(&hashCtx, digest.digest)))
 		goto done;
 
-	if ((result = obj_policy_validate_auth_oiap(hPolicy, &digest, &ownerAuth)))
-		goto done;
+	if (delegationType == TSS_DELEGATIONTYPE_NONE) {
+		if ((result = obj_policy_validate_auth_oiap(hPolicy, &digest, pAuth)))
+			goto done;
+	} else {
+		if ((result = authsess_xsap_verify(xsap, &digest)))
+			goto done;
+	}
 
 	if ((result = obj_migdata_set_sig_ticket(hSigData, sizeof(sigTicket.digest), sigTicket.digest)))
 		goto done;
@@ -192,6 +240,7 @@ Tspi_TPM_CMKCreateTicket(TSS_HTPM     hTpm,		/* in */
 done:
 	free_tspi(hContext, pubKey);
 	free_tspi(hContext, sig);
+	authsess_free(xsap);
 
 	return result;
 }

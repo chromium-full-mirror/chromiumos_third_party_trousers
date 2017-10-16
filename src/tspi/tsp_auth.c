@@ -806,6 +806,11 @@ authsess_xsap_init(TSS_HCONTEXT     tspContext,
 	case TPM_ORD_ActivateIdentity:
 	case TPM_ORD_NV_DefineSpace:
 	case TPM_ORD_ResetLockValue:
+	case TPM_ORD_CMK_ApproveMA:
+	case TPM_ORD_AuthorizeMigrationKey:
+	case TPM_ORD_CMK_CreateTicket:
+	case TPM_ORD_OwnerReadInternalPub:
+	case TPM_ORD_OwnerReadPubek:
 		if ((result = obj_tpm_get_policy(obj_parent, TSS_POLICY_USAGE,
 						 &sess->hUsageParent)))
 			goto error;
@@ -956,6 +961,11 @@ authsess_xsap_init(TSS_HCONTEXT     tspContext,
 		break;
 	case TPM_ORD_ActivateIdentity:
 	case TPM_ORD_ResetLockValue:
+	case TPM_ORD_CMK_ApproveMA:
+	case TPM_ORD_AuthorizeMigrationKey:
+	case TPM_ORD_CMK_CreateTicket:
+	case TPM_ORD_OwnerReadInternalPub:
+	case TPM_ORD_OwnerReadPubek:
 		get_child_auth = FALSE;
 		break;
 	default:
