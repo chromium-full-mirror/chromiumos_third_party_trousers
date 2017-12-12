@@ -1703,7 +1703,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 	case TPM_ORD_Extend:
 	case TPM_ORD_StirRandom:
 	case TPM_ORD_LoadMaintenanceArchive: /* XXX */
-	case TPM_ORD_FieldUpgrade:
 	case TPM_ORD_Delegate_UpdateVerification:
 	case TPM_ORD_Delegate_VerifyDelegation:
 	{
@@ -1722,6 +1721,39 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 
 		*outOffset += TSS_TPM_TXBLOB_HDR_LEN;
 		LoadBlob_UINT32(outOffset, val1, out_blob);
+		LoadBlob(outOffset, in_len1, out_blob, in_blob1);
+		if (auth1 && auth2) {
+			LoadBlob_Auth(outOffset, out_blob, auth1);
+			LoadBlob_Auth(outOffset, out_blob, auth2);
+			LoadBlob_Header(TPM_TAG_RQU_AUTH2_COMMAND, *outOffset, ordinal, out_blob);
+		} else if (auth1) {
+			LoadBlob_Auth(outOffset, out_blob, auth1);
+			LoadBlob_Header(TPM_TAG_RQU_AUTH1_COMMAND, *outOffset, ordinal, out_blob);
+		} else if (auth2) {
+			LoadBlob_Auth(outOffset, out_blob, auth2);
+			LoadBlob_Header(TPM_TAG_RQU_AUTH1_COMMAND, *outOffset, ordinal, out_blob);
+		} else {
+			LoadBlob_Header(TPM_TAG_RQU_COMMAND, *outOffset, ordinal, out_blob);
+		}
+
+		break;
+	}
+        /* 1 BLOB, 2 optional AUTHs */
+	case TPM_ORD_FieldUpgrade:
+	{
+		UINT32 in_len1 = va_arg(ap, UINT32);
+		BYTE *in_blob1 = va_arg(ap, BYTE *);
+		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
+		TPM_AUTH *auth2 = va_arg(ap, TPM_AUTH *);
+		va_end(ap);
+
+		if (in_len1 && !in_blob1) {
+			result = TCSERR(TSS_E_INTERNAL_ERROR);
+			LogError("Internal error for ordinal 0x%x", ordinal);
+			break;
+		}
+
+		*outOffset += TSS_TPM_TXBLOB_HDR_LEN;
 		LoadBlob(outOffset, in_len1, out_blob, in_blob1);
 		if (auth1 && auth2) {
 			LoadBlob_Auth(outOffset, out_blob, auth1);

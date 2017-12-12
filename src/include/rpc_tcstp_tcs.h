@@ -206,6 +206,7 @@ DECLARE_TCSTP_FUNC(OwnerSetDisable);
 DECLARE_TCSTP_FUNC(PhysicalDisable);
 DECLARE_TCSTP_FUNC(PhysicalPresence);
 DECLARE_TCSTP_FUNC(SetTempDeactivated);
+DECLARE_TCSTP_FUNC(FieldUpgrade);
 #ifdef TSS_BUILD_TSS12
 DECLARE_TCSTP_FUNC(SetTempDeactivated2);
 DECLARE_TCSTP_FUNC(ResetLockValue);
@@ -226,6 +227,7 @@ DECLARE_TCSTP_FUNC(ResetLockValue);
 #define tcs_wrap_SetTempDeactivated	tcs_wrap_Error
 #define tcs_wrap_SetTempDeactivated2	tcs_wrap_Error
 #define tcs_wrap_ResetLockValue		tcs_wrap_Error
+#define tcs_wrap_FieldUpgrade		tcs_wrap_Error
 #endif
 
 #ifdef TSS_BUILD_CERTIFY

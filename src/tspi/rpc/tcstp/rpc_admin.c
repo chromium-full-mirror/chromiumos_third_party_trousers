@@ -302,7 +302,51 @@ RPC_FieldUpgrade_TP(struct host_table_entry *hte,
 		    BYTE ** dataOut,	/* out */
 		    TPM_AUTH * ownerAuth)	/* in, out */
 {
-	return TSPERR(TSS_E_NOTIMPL);
+	TSS_RESULT result;
+
+	initData(&hte->comm, 4);
+	hte->comm.hdr.u.ordinal = TCSD_ORD_FIELDUPGRADE;
+	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
+
+	if (setData(TCSD_PACKET_TYPE_UINT32, 0, &hte->tcsContext, 0, &hte->comm))
+		return TSPERR(TSS_E_INTERNAL_ERROR);
+	if (setData(TCSD_PACKET_TYPE_UINT32, 1, &dataInSize, 0, &hte->comm))
+		return TSPERR(TSS_E_INTERNAL_ERROR);
+	if (setData(TCSD_PACKET_TYPE_PBYTE, 2, dataIn, dataInSize, &hte->comm))
+		return TSPERR(TSS_E_INTERNAL_ERROR);
+
+	if (ownerAuth) {
+		if (setData(TCSD_PACKET_TYPE_AUTH, 3, ownerAuth, 0, &hte->comm))
+			return TSPERR(TSS_E_INTERNAL_ERROR);
+	}
+
+	result = sendTCSDPacket(hte);
+
+	if (result == TSS_SUCCESS)
+		result = hte->comm.hdr.u.result;
+
+	if (result == TSS_SUCCESS) {
+		if (getData(TCSD_PACKET_TYPE_UINT32, 0, dataOutSize, 0, &hte->comm))
+			return TSPERR(TSS_E_INTERNAL_ERROR);
+		*dataOut = (BYTE *) malloc(*dataOutSize);
+		if (*dataOut == NULL)
+			return TSPERR(TSS_E_OUTOFMEMORY);
+		if (getData(TCSD_PACKET_TYPE_PBYTE, 1, *dataOut, *dataOutSize, &hte->comm)) {
+			free(*dataOut);
+			*dataOut = NULL;
+			return TSPERR(TSS_E_INTERNAL_ERROR);
+		}
+
+		if (ownerAuth) {
+			if (getData(TCSD_PACKET_TYPE_AUTH, 2, ownerAuth, 0, &hte->comm)) {
+				free(*dataOut);
+				*dataOut = NULL;
+				return TSPERR(TSS_E_INTERNAL_ERROR);
+			}
+		}
+	}
+
+	return result;
 }
 
 TSS_RESULT

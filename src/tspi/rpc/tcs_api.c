@@ -2051,7 +2051,9 @@ TSS_RESULT RPC_FieldUpgrade(TSS_HCONTEXT tspContext,	/* in */
 
 	switch (entry->type) {
 		case CONNECTION_TYPE_TCP_PERSISTANT:
-			result = (UINT32) TSPERR(TSS_E_INTERNAL_ERROR);
+			result = RPC_FieldUpgrade_TP(entry, dataInSize, dataIn,
+						     dataOutSize, dataOut,
+						     ownerAuth);
 			break;
 		default:
 			break;

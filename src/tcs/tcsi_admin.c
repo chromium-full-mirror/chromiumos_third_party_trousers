@@ -346,11 +346,13 @@ TCSP_FieldUpgrade_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		goto done;
 
-	if ((result = auth_mgr_check(hContext, &ownerAuth->AuthHandle)))
-		goto done;
+	if (ownerAuth) {
+		if ((result = auth_mgr_check(hContext, &ownerAuth->AuthHandle)))
+			goto done;
+	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_FieldUpgrade, &offset, txBlob, dataInSize, dataInSize,
-				    dataIn, ownerAuth, NULL)))
+	if ((result = tpm_rqu_build(TPM_ORD_FieldUpgrade, &offset, txBlob, dataInSize, dataIn,
+				    ownerAuth, NULL)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))

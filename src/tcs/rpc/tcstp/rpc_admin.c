@@ -425,4 +425,79 @@ done:
 
 	return TSS_SUCCESS;
 }
+
+TSS_RESULT
+tcs_wrap_FieldUpgrade(struct tcsd_thread_data *data)
+{
+	TCS_CONTEXT_HANDLE hContext;
+	TSS_RESULT result;
+	UINT32 dataInSize;
+	BYTE* dataIn;
+	UINT32 dataOutSize;
+	BYTE* dataOut = NULL;
+	TPM_AUTH ownerAuth;
+	TPM_AUTH* pOwnerAuth;
+
+	if (getData(TCSD_PACKET_TYPE_UINT32, 0, &hContext, 0, &data->comm))
+		return TCSERR(TSS_E_INTERNAL_ERROR);
+
+	if ((result = ctx_verify_context(hContext)))
+		goto done;
+
+	LogDebugFn("thread %ld context %x", THREAD_ID, hContext);
+
+	if (getData(TCSD_PACKET_TYPE_UINT32, 1, &dataInSize, 0, &data->comm))
+		return TCSERR(TSS_E_INTERNAL_ERROR);
+
+	dataIn = (BYTE *)malloc(dataInSize);
+	if (dataIn == NULL) {
+		return TCSERR(TSS_E_INTERNAL_ERROR);
+	}
+	if (getData(TCSD_PACKET_TYPE_PBYTE, 2, dataIn, dataInSize, &data->comm)) {
+		free(dataIn);
+		return TCSERR(TSS_E_INTERNAL_ERROR);
+	}
+
+	if (getData(TCSD_PACKET_TYPE_AUTH, 3, &ownerAuth, 0, &data->comm)) {
+		pOwnerAuth = NULL;
+	} else {
+		pOwnerAuth = &ownerAuth;
+	}
+
+	MUTEX_LOCK(tcsp_lock);
+
+	result = TCSP_FieldUpgrade_Internal(hContext, dataInSize, dataIn, &dataOutSize,
+					    &dataOut, pOwnerAuth);
+
+	MUTEX_UNLOCK(tcsp_lock);
+	free(dataIn);
+
+	if (result == TSS_SUCCESS) {
+		initData(&data->comm, 3);
+
+		if (setData(TCSD_PACKET_TYPE_UINT32, 0, &dataOutSize, 0, &data->comm)) {
+			free(dataOut);
+			return TCSERR(TSS_E_INTERNAL_ERROR);
+		}
+		if (setData(TCSD_PACKET_TYPE_PBYTE, 1, dataOut, dataOutSize, &data->comm)) {
+			free(dataOut);
+			return TCSERR(TSS_E_INTERNAL_ERROR);
+		}
+		free(dataOut);
+
+		if (pOwnerAuth) {
+			if (setData(TCSD_PACKET_TYPE_AUTH, 2, pOwnerAuth, 0, &data->comm))
+				return TCSERR(TSS_E_INTERNAL_ERROR);
+		}
+
+		data->comm.hdr.u.result = TSS_SUCCESS;
+		return TSS_SUCCESS;
+	}
+
+done:	free(dataOut);
+	initData(&data->comm, 0);
+	data->comm.hdr.u.result = result;
+	return TSS_SUCCESS;
+}
+
 #endif

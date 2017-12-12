@@ -457,7 +457,7 @@ DispatchTable tcs_func_table[TCSD_MAX_NUM_ORDS] = {
 	{tcs_wrap_PhysicalSetDeactivated,"PhysicalSetDeactivated"},
 	{tcs_wrap_SetTempDeactivated,"SetTempDeactivated"}, /* 65 */
 	{tcs_wrap_PhysicalPresence,"PhysicalPresence"},
-	{tcs_wrap_Error,"Error"},
+	{tcs_wrap_FieldUpgrade,"FieldUpgrade"},
 	{tcs_wrap_Error,"Error"},
 	{tcs_wrap_CreateMaintenanceArchive,"CreateMaintenanceArchive"},
 	{tcs_wrap_LoadMaintenanceArchive,"LoadMaintenanceArchive"}, /* 70 */

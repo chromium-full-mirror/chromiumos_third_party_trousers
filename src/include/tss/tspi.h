@@ -406,6 +406,15 @@ TSPICALL Tspi_TPM_GetStatus
     TSS_BOOL*           pfTpmState                     // out
 );
 
+TSPICALL Tspi_TPM_FieldUpgrade
+(
+    TSS_HTPM            hTPM,                          // in
+    UINT32              ulDataInLength,                // in
+    BYTE*               rgbDataIn,                     // in
+    UINT32*             pulDataOutLength,              // out
+    BYTE**              prgbDataOut                    // out
+);
+
 TSPICALL Tspi_TPM_GetCapability
 (
     TSS_HTPM            hTPM,                          // in
@@ -711,7 +720,6 @@ TSPICALL Tspi_TPM_GetAuditDigest
     UINT32*             ordSize,                       // out
     UINT32**            ordList                        // out
 );
-
 
 
 // PcrComposite Class Definitions

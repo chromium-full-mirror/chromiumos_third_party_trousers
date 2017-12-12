@@ -405,3 +405,32 @@ Tspi_TPM_GetStatus(TSS_HTPM hTPM,		/* in */
 
 	return TSS_SUCCESS;
 }
+
+TSS_RESULT
+Tspi_TPM_FieldUpgrade(TSS_HTPM hTPM,			/* in */
+		      UINT32 ulDataInLength,		/* in */
+		      BYTE * rgbDataIn,			/* in */
+		      UINT32 * pulDataOutLength,	/* out */
+		      BYTE ** prgbDataOut)		/* out */
+{
+	TSS_HCONTEXT tspContext;
+	TSS_RESULT result;
+
+	LogTrace();
+	if ((ulDataInLength != 0) && (rgbDataIn == NULL))
+		return TSPERR(TSS_E_BAD_PARAMETER);
+
+	if ((pulDataOutLength == NULL) || (prgbDataOut == NULL))
+		return TSPERR(TSS_E_BAD_PARAMETER);
+
+	if ((result = obj_tpm_get_tsp_context(hTPM, &tspContext)))
+		return result;
+
+	// Note that we're passing NULL for the auth parameter here as we
+	// currently have no use for authenticated FieldUpgrade commands. If
+	// a need for owner auth appears, we can use tspContext to set up and
+	// pass a suitable auth TPM_AUTH parameter.
+	return TCS_API(tspContext)->FieldUpgrade(tspContext, ulDataInLength,
+						 rgbDataIn, pulDataOutLength,
+						 prgbDataOut, NULL);
+}
