@@ -273,8 +273,10 @@ RPC_ActivateTPMIdentity_TP(struct host_table_entry *hte,
 	if (result == TSS_SUCCESS) {
 		i = 0;
 		if (idKeyAuth) {
-			if (getData(TCSD_PACKET_TYPE_AUTH, i++, idKeyAuth, 0, &hte->comm))
+			if (getData(TCSD_PACKET_TYPE_AUTH, i++, idKeyAuth, 0, &hte->comm)) {
 				result = TSPERR(TSS_E_INTERNAL_ERROR);
+				goto done;
+			}
 		}
 		if (getData(TCSD_PACKET_TYPE_AUTH, i++, ownerAuth, 0, &hte->comm)) {
 			result = TSPERR(TSS_E_INTERNAL_ERROR);

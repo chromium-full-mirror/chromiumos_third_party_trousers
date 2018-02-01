@@ -193,6 +193,7 @@ RPC_OwnerReadPubek_TP(struct host_table_entry *hte,
         if (result == TSS_SUCCESS) {
                 if (getData(TCSD_PACKET_TYPE_AUTH, 0, ownerAuth, 0, &hte->comm)){
                         result = TSPERR(TSS_E_INTERNAL_ERROR);
+                        goto done;
 		}
 
                 if (getData(TCSD_PACKET_TYPE_UINT32, 1, pubEndorsementKeySize, 0, &hte->comm)) {

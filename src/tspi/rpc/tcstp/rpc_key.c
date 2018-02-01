@@ -64,12 +64,12 @@ RPC_LoadKeyByBlob_TP(struct host_table_entry *hte,
 		i = 0;
 		if (pAuth != NULL) {
 			if (getData(TCSD_PACKET_TYPE_AUTH, i++, pAuth, 0, &hte->comm))
-				result = TSPERR(TSS_E_INTERNAL_ERROR);
+				return TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 		if (getData(TCSD_PACKET_TYPE_UINT32, i++, phKeyTCSI, 0, &hte->comm))
-			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			return TSPERR(TSS_E_INTERNAL_ERROR);
 		if (getData(TCSD_PACKET_TYPE_UINT32, i++, phKeyHMAC, 0, &hte->comm))
-			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			return TSPERR(TSS_E_INTERNAL_ERROR);
 
 		LogDebugFn("OUT: TCS key handle: 0x%x, TPM key slot: 0x%x", *phKeyTCSI,
 			   *phKeyHMAC);
@@ -288,9 +288,9 @@ RPC_OwnerReadInternalPub_TP(struct host_table_entry *hte,
 
 	if (result == TSS_SUCCESS) {
 		if (getData(TCSD_PACKET_TYPE_AUTH, 0, pOwnerAuth, 0, &hte->comm))
-			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			return TSPERR(TSS_E_INTERNAL_ERROR);
 		if (getData(TCSD_PACKET_TYPE_UINT32, 1, punPubKeySize, 0, &hte->comm))
-			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			return TSPERR(TSS_E_INTERNAL_ERROR);
 
 		*ppbPubKeyData = (BYTE *) malloc(*punPubKeySize);
 		if (*ppbPubKeyData == NULL) {
@@ -351,9 +351,9 @@ RPC_KeyControlOwner_TP(struct host_table_entry *hte,		// in
 
 	if (result == TSS_SUCCESS) {
 		if (getData(TCSD_PACKET_TYPE_AUTH, 0, pOwnerAuth, 0, &hte->comm))
-			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			return TSPERR(TSS_E_INTERNAL_ERROR);
 		if (getData(TCSD_PACKET_TYPE_UUID, 1, pUuidData, 0, &hte->comm))
-			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			return TSPERR(TSS_E_INTERNAL_ERROR);
 	}
 
 	return result;

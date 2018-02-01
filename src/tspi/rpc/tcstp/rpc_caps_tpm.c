@@ -121,13 +121,13 @@ RPC_GetCapabilityOwner_TP(struct host_table_entry *hte,
 
 	if (result == TSS_SUCCESS) {
 		if (getData(TCSD_PACKET_TYPE_VERSION, 0, pVersion, 0, &hte->comm))
-			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			return TSPERR(TSS_E_INTERNAL_ERROR);
 		if (getData(TCSD_PACKET_TYPE_UINT32, 1, pNonVolatileFlags, 0, &hte->comm))
-			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			return TSPERR(TSS_E_INTERNAL_ERROR);
 		if (getData(TCSD_PACKET_TYPE_UINT32, 2, pVolatileFlags, 0, &hte->comm))
-			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			return TSPERR(TSS_E_INTERNAL_ERROR);
 		if (getData(TCSD_PACKET_TYPE_AUTH, 3, pOwnerAuth, 0, &hte->comm))
-			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			return TSPERR(TSS_E_INTERNAL_ERROR);
 	}
 
 	return result;

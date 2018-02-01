@@ -40,6 +40,9 @@ RPC_CreateMaintenanceArchive_TP(struct host_table_entry *hte,
 	hte->comm.hdr.u.ordinal = TCSD_ORD_CREATEMAINTENANCEARCHIVE;
 	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
 
+	*random = NULL;
+	*archive = NULL;
+
 	if (setData(TCSD_PACKET_TYPE_UINT32, 0, &hte->tcsContext, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	if (setData(TCSD_PACKET_TYPE_BOOL, 1, &generateRandom, 0, &hte->comm))
@@ -53,10 +56,14 @@ RPC_CreateMaintenanceArchive_TP(struct host_table_entry *hte,
 		result = hte->comm.hdr.u.result;
 
 	if (result == TSS_SUCCESS) {
-		if (getData(TCSD_PACKET_TYPE_AUTH, 0, ownerAuth, 0, &hte->comm))
+		if (getData(TCSD_PACKET_TYPE_AUTH, 0, ownerAuth, 0, &hte->comm)) {
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
-		if (getData(TCSD_PACKET_TYPE_UINT32, 1, randomSize, 0, &hte->comm))
+			goto done;
+		}
+		if (getData(TCSD_PACKET_TYPE_UINT32, 1, randomSize, 0, &hte->comm)) {
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			goto done;
+		}
 
 		if (*randomSize > 0) {
 			*random = malloc(*randomSize);
@@ -67,38 +74,38 @@ RPC_CreateMaintenanceArchive_TP(struct host_table_entry *hte,
 			}
 
 			if (getData(TCSD_PACKET_TYPE_PBYTE, 2, *random, *randomSize, &hte->comm)) {
-				free(*random);
 				result = TSPERR(TSS_E_INTERNAL_ERROR);
 				goto done;
 			}
-		} else {
-			*random = NULL;
 		}
 
 		/* Assume all elements are in the list, even when *randomSize == 0. */
-		if (getData(TCSD_PACKET_TYPE_UINT32, 3, archiveSize, 0, &hte->comm))
+		if (getData(TCSD_PACKET_TYPE_UINT32, 3, archiveSize, 0, &hte->comm)) {
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			goto done;
+		}
 
 		if (*archiveSize > 0) {
 			*archive = malloc(*archiveSize);
 			if (*archive == NULL) {
-				free(*random);
 				LogError("malloc of %u bytes failed.", *archiveSize);
 				result = TSPERR(TSS_E_OUTOFMEMORY);
 				goto done;
 			}
 
 			if (getData(TCSD_PACKET_TYPE_PBYTE, 4, *archive, *archiveSize, &hte->comm)) {
-				free(*random);
-				free(*archive);
 				result = TSPERR(TSS_E_INTERNAL_ERROR);
 				goto done;
 			}
-		} else {
-			*archive = NULL;
 		}
 	}
 done:
+	if (result) {
+		free(*random);
+		*random = NULL;
+		free(*archive);
+		*archive = NULL;
+	}
 	return result;
 }
 
@@ -116,6 +123,8 @@ RPC_LoadMaintenanceArchive_TP(struct host_table_entry *hte,
 	hte->comm.hdr.u.ordinal = TCSD_ORD_LOADMAINTENANCEARCHIVE;
 	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
 
+	*dataOut = NULL;
+
 	if (setData(TCSD_PACKET_TYPE_UINT32, 0, &hte->tcsContext, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	if (setData(TCSD_PACKET_TYPE_UINT32, 1, &dataInSize, 0, &hte->comm))
@@ -131,10 +140,14 @@ RPC_LoadMaintenanceArchive_TP(struct host_table_entry *hte,
 		result = hte->comm.hdr.u.result;
 
 	if (result == TSS_SUCCESS) {
-		if (getData(TCSD_PACKET_TYPE_AUTH, 0, ownerAuth, 0, &hte->comm))
+		if (getData(TCSD_PACKET_TYPE_AUTH, 0, ownerAuth, 0, &hte->comm)) {
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
-		if (getData(TCSD_PACKET_TYPE_UINT32, 1, dataOutSize, 0, &hte->comm))
+			goto done;
+		}
+		if (getData(TCSD_PACKET_TYPE_UINT32, 1, dataOutSize, 0, &hte->comm)) {
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			goto done;
+		}
 
 		if (*dataOutSize > 0) {
 			*dataOut = malloc(*dataOutSize);
@@ -145,15 +158,16 @@ RPC_LoadMaintenanceArchive_TP(struct host_table_entry *hte,
 			}
 
 			if (getData(TCSD_PACKET_TYPE_PBYTE, 2, *dataOut, *dataOutSize, &hte->comm)) {
-				free(*dataOut);
 				result = TSPERR(TSS_E_INTERNAL_ERROR);
 				goto done;
 			}
-		} else {
-			*dataOut = NULL;
 		}
 	}
 done:
+	if (result) {
+		free(*dataOut);
+		*dataOut = NULL;
+	}
 	return result;
 }
 
