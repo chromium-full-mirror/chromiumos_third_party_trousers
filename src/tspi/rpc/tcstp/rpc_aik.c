@@ -51,6 +51,12 @@ RPC_MakeIdentity_TP(struct host_table_entry *hte,
 	hte->comm.hdr.u.ordinal = TCSD_ORD_MAKEIDENTITY;
 	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
 
+	*idKey = NULL;
+	*prgbIdentityBinding = NULL;
+	*prgbEndorsementCredential = NULL;
+	*prgbPlatformCredential = NULL;
+	*prgbConformanceCredential = NULL;
+
 	if (setData(TCSD_PACKET_TYPE_UINT32, 0, &hte->tcsContext, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	if (setData(TCSD_PACKET_TYPE_ENCAUTH, 1, &identityAuth, 0, &hte->comm))
@@ -99,12 +105,10 @@ RPC_MakeIdentity_TP(struct host_table_entry *hte,
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *idKey, *idKeySize, &hte->comm)) {
-			free(*idKey);
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_UINT32, i++, pcIdentityBindingSize, 0, &hte->comm)) {
-			free(*idKey);
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
@@ -112,19 +116,14 @@ RPC_MakeIdentity_TP(struct host_table_entry *hte,
 		*prgbIdentityBinding = (BYTE *) malloc(*pcIdentityBindingSize);
 		if (*prgbIdentityBinding == NULL) {
 			LogError("malloc of %u bytes failed.", *pcIdentityBindingSize);
-			free(*idKey);
 			result = TSPERR(TSS_E_OUTOFMEMORY);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *prgbIdentityBinding, *pcIdentityBindingSize, &hte->comm)) {
-			free(*idKey);
-			free(*prgbIdentityBinding);
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_UINT32, i++, pcEndorsementCredentialSize, 0, &hte->comm)) {
-			free(*idKey);
-			free(*prgbIdentityBinding);
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
@@ -132,27 +131,14 @@ RPC_MakeIdentity_TP(struct host_table_entry *hte,
 		*prgbEndorsementCredential = (BYTE *) malloc(*pcEndorsementCredentialSize);
 		if (*prgbEndorsementCredential == NULL) {
 			LogError("malloc of %u bytes failed.", *pcEndorsementCredentialSize);
-			free(*idKey);
-			free(*prgbIdentityBinding);
-			*prgbIdentityBinding = NULL;
 			result = TSPERR(TSS_E_OUTOFMEMORY);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *prgbEndorsementCredential, *pcEndorsementCredentialSize, &hte->comm)) {
-			free(*idKey);
-			free(*prgbIdentityBinding);
-			*prgbIdentityBinding = NULL;
-			free(*prgbEndorsementCredential);
-			*prgbEndorsementCredential = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_UINT32, i++, pcPlatformCredentialSize, 0, &hte->comm)) {
-			free(*idKey);
-			free(*prgbIdentityBinding);
-			*prgbIdentityBinding = NULL;
-			free(*prgbEndorsementCredential);
-			*prgbEndorsementCredential = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
@@ -160,33 +146,14 @@ RPC_MakeIdentity_TP(struct host_table_entry *hte,
 		*prgbPlatformCredential = (BYTE *) malloc(*pcPlatformCredentialSize);
 		if (*prgbPlatformCredential == NULL) {
 			LogError("malloc of %u bytes failed.", *pcPlatformCredentialSize);
-			free(*idKey);
-			free(*prgbIdentityBinding);
-			*prgbIdentityBinding = NULL;
-			free(*prgbEndorsementCredential);
-			*prgbEndorsementCredential = NULL;
 			result = TSPERR(TSS_E_OUTOFMEMORY);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *prgbPlatformCredential, *pcPlatformCredentialSize, &hte->comm)) {
-			free(*idKey);
-			free(*prgbIdentityBinding);
-			*prgbIdentityBinding = NULL;
-			free(*prgbEndorsementCredential);
-			*prgbEndorsementCredential = NULL;
-			free(*prgbPlatformCredential);
-			*prgbPlatformCredential = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_UINT32, i++, pcConformanceCredentialSize, 0, &hte->comm)) {
-			free(*idKey);
-			free(*prgbIdentityBinding);
-			*prgbIdentityBinding = NULL;
-			free(*prgbEndorsementCredential);
-			*prgbEndorsementCredential = NULL;
-			free(*prgbPlatformCredential);
-			*prgbPlatformCredential = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
@@ -194,31 +161,27 @@ RPC_MakeIdentity_TP(struct host_table_entry *hte,
 		*prgbConformanceCredential = (BYTE *) malloc(*pcConformanceCredentialSize);
 		if (*prgbConformanceCredential == NULL) {
 			LogError("malloc of %u bytes failed.", *pcConformanceCredentialSize);
-			free(*idKey);
-			free(*prgbIdentityBinding);
-			*prgbIdentityBinding = NULL;
-			free(*prgbEndorsementCredential);
-			*prgbEndorsementCredential = NULL;
-			free(*prgbPlatformCredential);
-			*prgbPlatformCredential = NULL;
 			result = TSPERR(TSS_E_OUTOFMEMORY);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *prgbConformanceCredential, *pcConformanceCredentialSize, &hte->comm)) {
-			free(*idKey);
-			free(*prgbIdentityBinding);
-			*prgbIdentityBinding = NULL;
-			free(*prgbEndorsementCredential);
-			*prgbEndorsementCredential = NULL;
-			free(*prgbPlatformCredential);
-			*prgbPlatformCredential = NULL;
-			free(*prgbConformanceCredential);
-			*prgbConformanceCredential = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}
 
 done:
+	if (result) {
+		free(*idKey);
+		*idKey = NULL;
+		free(*prgbIdentityBinding);
+		*prgbIdentityBinding = NULL;
+		free(*prgbEndorsementCredential);
+		*prgbEndorsementCredential = NULL;
+		free(*prgbPlatformCredential);
+		*prgbPlatformCredential = NULL;
+		free(*prgbConformanceCredential);
+		*prgbConformanceCredential = NULL;
+	}
 	return result;
 }
 
@@ -284,6 +247,8 @@ RPC_ActivateTPMIdentity_TP(struct host_table_entry *hte,
 	hte->comm.hdr.u.ordinal = TCSD_ORD_ACTIVATETPMIDENTITY;
 	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
 
+	*SymmetricKey = NULL;
+
 	if (setData(TCSD_PACKET_TYPE_UINT32, i++, &hte->tcsContext, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	if (setData(TCSD_PACKET_TYPE_UINT32, i++, &idKey, 0, &hte->comm))
@@ -327,10 +292,13 @@ RPC_ActivateTPMIdentity_TP(struct host_table_entry *hte,
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *SymmetricKey, *SymmetricKeySize, &hte->comm)) {
-			free(*SymmetricKey);
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}
 done:
+	if (result) {
+		free(*SymmetricKey);
+		*SymmetricKey = NULL;
+	}
 	return result;
 }

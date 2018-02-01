@@ -96,6 +96,8 @@ RPC_ReadPubek_TP(struct host_table_entry *hte,
 	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
 	/*      &hte->comm.numParms = 2; */
 
+	*pubEndorsementKey = NULL;
+
 	if (setData(TCSD_PACKET_TYPE_UINT32, 0, &hte->tcsContext, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	if (setData(TCSD_PACKET_TYPE_NONCE, 1, &antiReplay, 0, &hte->comm))
@@ -119,16 +121,18 @@ RPC_ReadPubek_TP(struct host_table_entry *hte,
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, 1, *pubEndorsementKey, *pubEndorsementKeySize, &hte->comm)) {
-			free(*pubEndorsementKey);
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_DIGEST, 2, &(checksum->digest), 0, &hte->comm)) {
-			free(*pubEndorsementKey);
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}
 done:
+	if (result) {
+		free(*pubEndorsementKey);
+		*pubEndorsementKey = NULL;
+	}
 	return result;
 }
 
@@ -174,6 +178,8 @@ RPC_OwnerReadPubek_TP(struct host_table_entry *hte,
         hte->comm.hdr.u.ordinal = TCSD_ORD_OWNERREADPUBEK;
 	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
 
+	*pubEndorsementKey = NULL;
+
         if (setData(TCSD_PACKET_TYPE_UINT32, 0, &hte->tcsContext, 0, &hte->comm))
                 return TSPERR(TSS_E_INTERNAL_ERROR);
         if (setData(TCSD_PACKET_TYPE_AUTH, 1, ownerAuth, 0, &hte->comm))
@@ -186,7 +192,6 @@ RPC_OwnerReadPubek_TP(struct host_table_entry *hte,
 
         if (result == TSS_SUCCESS) {
                 if (getData(TCSD_PACKET_TYPE_AUTH, 0, ownerAuth, 0, &hte->comm)){
-			free(*pubEndorsementKey);
                         result = TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 
@@ -203,13 +208,16 @@ RPC_OwnerReadPubek_TP(struct host_table_entry *hte,
                 }
 
                 if (getData(TCSD_PACKET_TYPE_PBYTE, 2, *pubEndorsementKey, *pubEndorsementKeySize, &hte->comm)) {
-                        free(*pubEndorsementKey);
                         result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
                 }
         }
 
 done:
+	if (result) {
+		free(*pubEndorsementKey);
+		*pubEndorsementKey = NULL;
+	}
 	return result;
 }
 

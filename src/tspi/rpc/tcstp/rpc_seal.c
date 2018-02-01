@@ -45,6 +45,8 @@ common_Seal_TP(UINT32 sealOrdinal,
 	hte->comm.hdr.u.ordinal = sealOrdinal;
 	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
 
+	*SealedData = NULL;
+
 	if (setData(TCSD_PACKET_TYPE_UINT32, i++, &hte->tcsContext, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	if (setData(TCSD_PACKET_TYPE_UINT32, i++, &keyHandle, 0, &hte->comm))
@@ -90,12 +92,15 @@ common_Seal_TP(UINT32 sealOrdinal,
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, 2, *SealedData, *SealedDataSize, &hte->comm)) {
-			free(*SealedData);
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}
 
 done:
+	if (result) {
+		free(*SealedData);
+		*SealedData = NULL;
+	}
 	return result;
 }
 
@@ -149,6 +154,8 @@ RPC_Unseal_TP(struct host_table_entry *hte,
 	hte->comm.hdr.u.ordinal = TCSD_ORD_UNSEAL;
 	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
 
+	*Data = NULL;
+
 	if (setData(TCSD_PACKET_TYPE_UINT32, 0, &hte->tcsContext, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	if (setData(TCSD_PACKET_TYPE_UINT32, 1, &parentHandle, 0, &hte->comm))
@@ -196,11 +203,14 @@ RPC_Unseal_TP(struct host_table_entry *hte,
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, 3, *Data, *DataSize, &hte->comm)) {
-			free(*Data);
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}
 
 done:
+	if (result) {
+		free(*Data);
+		*Data = NULL;
+	}
 	return result;
 }

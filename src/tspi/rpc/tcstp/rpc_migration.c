@@ -50,6 +50,9 @@ RPC_CreateMigrationBlob_TP(struct host_table_entry *hte,
 	hte->comm.hdr.u.ordinal = TCSD_ORD_CREATEMIGRATIONBLOB;
 	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
 
+	*random = NULL;
+	*outData = NULL;
+
 	i = 0;
 	if (setData(TCSD_PACKET_TYPE_UINT32, i++, &hte->tcsContext, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
@@ -105,37 +108,35 @@ RPC_CreateMigrationBlob_TP(struct host_table_entry *hte,
 				goto done;
 			}
 			if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *random, *randomSize, &hte->comm)) {
-				free(*random);
 				result = TSPERR(TSS_E_INTERNAL_ERROR);
 				goto done;
 			}
 		}
 
 		if (getData(TCSD_PACKET_TYPE_UINT32, i++, outDataSize, 0, &hte->comm)) {
-			if (*randomSize > 0)
-				free(*random);
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 
 		*outData = (BYTE *)malloc(*outDataSize);
 		if (*outData == NULL) {
-			if (*randomSize > 0)
-				free(*random);
 			LogError("malloc of %u bytes failed.", *outDataSize);
 			result = TSPERR(TSS_E_OUTOFMEMORY);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *outData, *outDataSize, &hte->comm)) {
-			if (*randomSize > 0)
-				free(*random);
-			free(*outData);
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 	}
 
 done:
+	if (result) {
+		free(*random);
+		*random = NULL;
+		free(*outData);
+		*outData = NULL;
+	}
 	return result;
 }
 

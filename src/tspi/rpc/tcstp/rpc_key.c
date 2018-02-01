@@ -118,6 +118,8 @@ RPC_CreateWrapKey_TP(struct host_table_entry *hte,
 	hte->comm.hdr.u.ordinal = TCSD_ORD_CREATEWRAPKEY;
 	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
 
+	*keyData = NULL;
+
 	if (setData(TCSD_PACKET_TYPE_UINT32, 0, &hte->tcsContext, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	if (setData(TCSD_PACKET_TYPE_UINT32, 1, &hWrappingKey, 0, &hte->comm))
@@ -152,13 +154,11 @@ RPC_CreateWrapKey_TP(struct host_table_entry *hte,
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, 1, *keyData, *keyDataSize, &hte->comm)) {
-			free(*keyData);
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 		if (pAuth) {
 			if (getData(TCSD_PACKET_TYPE_AUTH, 2, pAuth, 0, &hte->comm)) {
-				free(*keyData);
 				result = TSPERR(TSS_E_INTERNAL_ERROR);
 				goto done;
 			}
@@ -166,6 +166,10 @@ RPC_CreateWrapKey_TP(struct host_table_entry *hte,
 	}
 
 done:
+	if (result) {
+		free(*keyData);
+		*keyData = NULL;
+	}
 	return result;
 }
 
@@ -262,6 +266,8 @@ RPC_OwnerReadInternalPub_TP(struct host_table_entry *hte,
 	hte->comm.hdr.u.ordinal = TCSD_ORD_OWNERREADINTERNALPUB;
 	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
 
+	*ppbPubKeyData = NULL;
+
 	if (setData(TCSD_PACKET_TYPE_UINT32, 0, &hte->tcsContext, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	if (setData(TCSD_PACKET_TYPE_UINT32, 1, &hKey, 0, &hte->comm))
@@ -290,6 +296,7 @@ RPC_OwnerReadInternalPub_TP(struct host_table_entry *hte,
 		if (getData(TCSD_PACKET_TYPE_PBYTE, 2, *ppbPubKeyData, *punPubKeySize, 
 			    &hte->comm)) {
 			free(*ppbPubKeyData);
+			*ppbPubKeyData = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}

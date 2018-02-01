@@ -137,25 +137,33 @@ RPC_CMK_CreateKey_TP(struct host_table_entry *hte,
 		result = hte->comm.hdr.u.result;
 
 	if (result == TSS_SUCCESS) {
-		if (getData(TCSD_PACKET_TYPE_UINT32, 0, keyDataSize, 0, &hte->comm))
-			return TSPERR(TSS_E_INTERNAL_ERROR);
+		if (getData(TCSD_PACKET_TYPE_UINT32, 0, keyDataSize, 0, &hte->comm)) {
+			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			goto done;
+		}
 		*keyData = (BYTE *)malloc(*keyDataSize);
 		if (*keyData == NULL) {
 			LogError("malloc of %u bytes failed.", *keyDataSize);
-			return TSPERR(TSS_E_OUTOFMEMORY);
+			result = TSPERR(TSS_E_OUTOFMEMORY);
+			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, 1, *keyData, *keyDataSize, &hte->comm)) {
-			free(*keyData);
-			return TSPERR(TSS_E_INTERNAL_ERROR);
+			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			goto done;
 		}
 		if (pAuth) {
 			if (getData(TCSD_PACKET_TYPE_AUTH, 2, pAuth, 0, &hte->comm)) {
-				free(*keyData);
-				return TSPERR(TSS_E_INTERNAL_ERROR);
+				result = TSPERR(TSS_E_INTERNAL_ERROR);
+				goto done;
 			}
 		}
 	}
 
+done:
+	if (result) {
+		free(*keyData);
+		*keyData = NULL;
+	}
 	return result;
 }
 
@@ -233,6 +241,9 @@ RPC_CMK_CreateBlob_TP(struct host_table_entry *hte,
 	hte->comm.hdr.u.ordinal = TCSD_ORD_CMK_CREATEBLOB;
 	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
 
+	*random = NULL;
+	*outData = NULL;
+
 	if (setData(TCSD_PACKET_TYPE_UINT32, 0, &hte->tcsContext, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	if (setData(TCSD_PACKET_TYPE_UINT32, 1, &hParentKey, 0, &hte->comm))
@@ -280,35 +291,48 @@ RPC_CMK_CreateBlob_TP(struct host_table_entry *hte,
 	if (result == TSS_SUCCESS) {
 		i = 0;
 		if (pAuth) {
-			if (getData(TCSD_PACKET_TYPE_AUTH, i++, pAuth, 0, &hte->comm))
-				return TSPERR(TSS_E_INTERNAL_ERROR);
+			if (getData(TCSD_PACKET_TYPE_AUTH, i++, pAuth, 0, &hte->comm)) {
+				result = TSPERR(TSS_E_INTERNAL_ERROR);
+				goto done;
+			}
 		}
-		if (getData(TCSD_PACKET_TYPE_UINT32, i++, randomSize, 0, &hte->comm))
-			return TSPERR(TSS_E_INTERNAL_ERROR);
+		if (getData(TCSD_PACKET_TYPE_UINT32, i++, randomSize, 0, &hte->comm)) {
+			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			goto done;
+		}
 		*random = (BYTE *)malloc(*randomSize);
 		if (*random == NULL) {
 			LogError("malloc of %u bytes failed.", *randomSize);
-			return TSPERR(TSS_E_OUTOFMEMORY);
+			result = TSPERR(TSS_E_OUTOFMEMORY);
+			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *random, *randomSize, &hte->comm)) {
-			free(*random);
-			return TSPERR(TSS_E_INTERNAL_ERROR);
+			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			goto done;
 		}
-		if (getData(TCSD_PACKET_TYPE_UINT32, i++, outDataSize, 0, &hte->comm))
-			return TSPERR(TSS_E_INTERNAL_ERROR);
+		if (getData(TCSD_PACKET_TYPE_UINT32, i++, outDataSize, 0, &hte->comm)) {
+			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			goto done;
+		}
 		*outData = (BYTE *)malloc(*outDataSize);
 		if (*outData == NULL) {
 			LogError("malloc of %u bytes failed.", *outDataSize);
-			free(*random);
-			return TSPERR(TSS_E_OUTOFMEMORY);
+			result = TSPERR(TSS_E_OUTOFMEMORY);
+			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *outData, *outDataSize, &hte->comm)) {
-			free(*random);
-			free(*outData);
-			return TSPERR(TSS_E_INTERNAL_ERROR);
+			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			goto done;
 		}
 	}
 
+done:
+	if (result) {
+		free(*random);
+		*random = NULL;
+		free(*outData);
+		*outData = NULL;
+	}
 	return result;
 }
 
@@ -333,6 +357,8 @@ RPC_CMK_ConvertMigration_TP(struct host_table_entry *hte,
 	initData(&hte->comm, 11);
 	hte->comm.hdr.u.ordinal = TCSD_ORD_CMK_CONVERTMIGRATION;
 	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
+
+	*outData = NULL;
 
 	if (setData(TCSD_PACKET_TYPE_UINT32, 0, &hte->tcsContext, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
@@ -373,22 +399,32 @@ RPC_CMK_ConvertMigration_TP(struct host_table_entry *hte,
 	if (result == TSS_SUCCESS) {
 		i = 0;
 		if (pAuth) {
-			if (getData(TCSD_PACKET_TYPE_AUTH, i++, pAuth, 0, &hte->comm))
-				return TSPERR(TSS_E_INTERNAL_ERROR);
+			if (getData(TCSD_PACKET_TYPE_AUTH, i++, pAuth, 0, &hte->comm)) {
+				result = TSPERR(TSS_E_INTERNAL_ERROR);
+				goto done;
+			}
 		}
-		if (getData(TCSD_PACKET_TYPE_UINT32, i++, outDataSize, 0, &hte->comm))
-			return TSPERR(TSS_E_INTERNAL_ERROR);
+		if (getData(TCSD_PACKET_TYPE_UINT32, i++, outDataSize, 0, &hte->comm)) {
+			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			goto done;
+		}
 		*outData = (BYTE *)malloc(*outDataSize);
 		if (*outData == NULL) {
 			LogError("malloc of %u bytes failed.", *outDataSize);
-			return TSPERR(TSS_E_OUTOFMEMORY);
+			result = TSPERR(TSS_E_OUTOFMEMORY);
+			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *outData, *outDataSize, &hte->comm)) {
-			free(*outData);
-			return TSPERR(TSS_E_INTERNAL_ERROR);
+			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			goto done;
 		}
 	}
 
+done:
+	if (result) {
+		free(*outData);
+		*outData = NULL;
+	}
 	return result;
 }
 
