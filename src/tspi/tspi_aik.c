@@ -425,7 +425,7 @@ Tspi_TPM_ActivateIdentity(TSS_HTPM hTPM,			/* in */
 	TCS_KEY_HANDLE tcsKeyHandle;
 	TSS_BOOL usesAuth;
 	TPM_AUTH *pIDKeyAuth;
-	BYTE *symKeyBlob, *credCallback, *cb_var;
+	BYTE *symKeyBlob = NULL, *credCallback = NULL, *cb_var = NULL;
 	UINT32 symKeyBlobLen, credLen, tmp;
 	TCPA_SYMMETRIC_KEY symKey;
 	TSS_CALLBACK *cb;
@@ -434,6 +434,10 @@ Tspi_TPM_ActivateIdentity(TSS_HTPM hTPM,			/* in */
 	struct authsess *xsap = NULL;
 	UINT32 delegationType = TSS_DELEGATIONTYPE_NONE;
 	TPM_AUTH* ownerAuthPtr = &ownerAuth;
+
+	symKey.data = NULL;
+	symCAAttestation.algorithm.parms = NULL;
+	symCAAttestation.credential = NULL;
 
 	LogTrace();
 	if (pulCredentialLength == NULL || prgbCredential == NULL)
@@ -445,37 +449,32 @@ Tspi_TPM_ActivateIdentity(TSS_HTPM hTPM,			/* in */
 	if ((result = obj_tpm_get_cb12(hTPM, TSS_TSPATTRIB_TPM_CALLBACK_ACTIVATEIDENTITY, &tmp,
 				       &cb_var)))
 		return result;
-
 	cb = (TSS_CALLBACK *)cb_var;
-	if (cb->callback == NULL) {
-		free_tspi(tspContext, cb);
-		cb = NULL;
-	}
 
 	if ((result = obj_rsakey_get_tcs_handle(hIdentKey, &tcsKeyHandle)))
-		return result;
+		goto done;
 
 	if ((result = obj_rsakey_get_policy(hIdentKey, TSS_POLICY_USAGE,
 					    &hIDPolicy, &usesAuth)))
-		return result;
+		goto done;
 
 	if ((result = obj_tpm_get_policy(hTPM, TSS_POLICY_USAGE, &hTPMPolicy)))
-		return result;
+		goto done;
 
 	if ((result = obj_policy_get_delegation_type(hTPMPolicy, &delegationType)))
-		return result;
+		goto done;
 
 	result = Trspi_HashInit(&hashCtx, TSS_HASH_SHA1);
 	result |= Trspi_Hash_UINT32(&hashCtx, TPM_ORD_ActivateIdentity);
 	result |= Trspi_Hash_UINT32(&hashCtx, ulAsymCAContentsBlobLength);
 	result |= Trspi_HashUpdate(&hashCtx, ulAsymCAContentsBlobLength, rgbAsymCAContentsBlob);
 	if ((result |= Trspi_HashFinal(&hashCtx, digest.digest)))
-		return result;
+		goto done;
 
 	if (usesAuth) {
 		if ((result = secret_PerformAuth_OIAP(hIDPolicy, TPM_ORD_ActivateIdentity,
 						      hIDPolicy, FALSE, &digest, &idKeyAuth)))
-			return result;
+			goto done;
 		pIDKeyAuth = &idKeyAuth;
 	} else {
 		pIDKeyAuth = NULL;
@@ -483,67 +482,56 @@ Tspi_TPM_ActivateIdentity(TSS_HTPM hTPM,			/* in */
 	if (delegationType == TSS_DELEGATIONTYPE_NONE) {
 		if ((result = secret_PerformAuth_OIAP(hTPM, TPM_ORD_ActivateIdentity, hTPMPolicy,
 						      FALSE, &digest, &ownerAuth)))
-			return result;
+			goto done;
 	} else {
 		if ((result = authsess_xsap_init(tspContext, hTPM, 0,
 						 TSS_AUTH_POLICY_REQUIRED,
 						 TPM_ORD_ActivateIdentity,
 						 TPM_ET_OWNER, &xsap)))
-			return result;
-		if ((result = authsess_xsap_hmac(xsap, &digest))) {
-			authsess_free(xsap);
-			return result;
-		}
+			goto done;
+		if ((result = authsess_xsap_hmac(xsap, &digest)))
+			goto done;
 		ownerAuthPtr = xsap->pAuth;
 	}
 	if ((result = TCS_API(tspContext)->ActivateTPMIdentity(tspContext, tcsKeyHandle,
 							       ulAsymCAContentsBlobLength,
 							       rgbAsymCAContentsBlob, pIDKeyAuth,
 							       ownerAuthPtr, &symKeyBlobLen,
-							       &symKeyBlob))) {
-		authsess_free(xsap);
-		return result;
-	}
+							       &symKeyBlob)))
+		goto done;
 
 	result = Trspi_HashInit(&hashCtx, TSS_HASH_SHA1);
 	result |= Trspi_Hash_UINT32(&hashCtx, result);
 	result |= Trspi_Hash_UINT32(&hashCtx, TPM_ORD_ActivateIdentity);
 	result |= Trspi_HashUpdate(&hashCtx, symKeyBlobLen, symKeyBlob);
-	if ((result |= Trspi_HashFinal(&hashCtx, digest.digest))) {
-		authsess_free(xsap);
-		return result;
-	}
+	if ((result |= Trspi_HashFinal(&hashCtx, digest.digest)))
+		goto done;
 
 	if (usesAuth) {
 		if ((result = obj_policy_validate_auth_oiap(hIDPolicy, &digest,
 							    &idKeyAuth))) {
 			LogDebugFn("Identity key auth validation of the symmetric key failed.");
-			authsess_free(xsap);
-			return result;
+			goto done;
 		}
 	}
 	if (delegationType == TSS_DELEGATIONTYPE_NONE) {
 		if ((result = obj_policy_validate_auth_oiap(hTPMPolicy, &digest,
 							    &ownerAuth))) {
 			LogDebugFn("Owner auth validation of the symmetric key failed.");
-			authsess_free(xsap);
-			return result;
+			goto done;
 		}
 	} else {
 		if ((result = authsess_xsap_verify(xsap, &digest))) {
 			LogDebugFn("Owner auth validation failed.");
-			authsess_free(xsap);
-			return result;
+			goto done;
 		}
 	}
-	authsess_free(xsap);
-	xsap = NULL;
 
 	offset = 0;
 	if ((result = Trspi_UnloadBlob_SYM_CA_ATTESTATION(&offset, rgbSymCAAttestationBlob,
 							  &symCAAttestation))) {
 		LogDebugFn("Error unloading CA's attestation blob.");
-		return result;
+		goto done;
 	}
 
 	if (cb && cb->callback) {
@@ -551,9 +539,8 @@ Tspi_TPM_ActivateIdentity(TSS_HTPM hTPM,			/* in */
 		credCallback = calloc(1, ulSymCAAttestationBlobLength);
 		if (credCallback == NULL) {
 			LogDebug("malloc of %u bytes failed", ulSymCAAttestationBlobLength);
-			free(symKeyBlob);
-			free_tspi(tspContext, cb);
-			return TSPERR(TSS_E_INTERNAL_ERROR);
+			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			goto done;
 		}
 		credLen = ulSymCAAttestationBlobLength;
 
@@ -563,54 +550,47 @@ Tspi_TPM_ActivateIdentity(TSS_HTPM hTPM,			/* in */
 						     symCAAttestation.credential,
 						     &credLen, credCallback))) {
 			LogDebug("ActivateIdentity callback returned error 0x%x", result);
-			free(symCAAttestation.credential);
-			free(symKeyBlob);
-			free_tspi(tspContext, cb);
-			free(credCallback);
-			return TSPERR(TSS_E_INTERNAL_ERROR);
+			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			goto done;
 		}
-		free(symCAAttestation.credential);
-		free_tspi(tspContext, cb);
-		free(symKeyBlob);
 
 		if ((*prgbCredential = calloc_tspi(tspContext, credLen)) == NULL) {
-			free(credCallback);
-			return TSPERR(TSS_E_OUTOFMEMORY);
+			result = TSPERR(TSS_E_OUTOFMEMORY);
+			goto done;
 		}
 
 		memcpy(*prgbCredential, credCallback, credLen);
 		*pulCredentialLength = credLen;
-		free(credCallback);
 
-		return TSS_SUCCESS;
+		goto done;
 	}
 
 	/* decrypt the symmetric blob using the recovered symmetric key */
 	offset = 0;
-	if ((result = Trspi_UnloadBlob_SYMMETRIC_KEY(&offset, symKeyBlob, &symKey))) {
-		free(symCAAttestation.credential);
-		free(symKeyBlob);
-		return result;
-	}
-	free(symKeyBlob);
+	if ((result = Trspi_UnloadBlob_SYMMETRIC_KEY(&offset, symKeyBlob, &symKey)))
+		goto done;
 
 	if ((result = Trspi_SymDecrypt(symKey.algId, symKey.encScheme, symKey.data, NULL,
 				       symCAAttestation.credential, symCAAttestation.credSize,
-				       credBlob, &credLen))) {
-		free(symCAAttestation.credential);
-		free(symKey.data);
-		return result;
-	}
-	free(symCAAttestation.credential);
+				       credBlob, &credLen)))
+		goto done;
 
 	if ((*prgbCredential = calloc_tspi(tspContext, credLen)) == NULL) {
-		free(symKey.data);
-		return TSPERR(TSS_E_OUTOFMEMORY);
+		result = TSPERR(TSS_E_OUTOFMEMORY);
+		goto done;
 	}
 
-	free(symKey.data);
 	memcpy(*prgbCredential, credBlob, credLen);
 	*pulCredentialLength = credLen;
 
-	return TSS_SUCCESS;
+done:
+	free(symKeyBlob);
+	free(credCallback);
+	if (cb_var)
+		free_tspi(tspContext, cb_var);
+	free(symKey.data);
+	free(symCAAttestation.algorithm.parms);
+	free(symCAAttestation.credential);
+	authsess_free(xsap);
+	return result;
 }
