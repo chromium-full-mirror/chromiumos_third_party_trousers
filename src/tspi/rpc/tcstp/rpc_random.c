@@ -36,6 +36,8 @@ RPC_GetRandom_TP(struct host_table_entry *hte,
 	hte->comm.hdr.u.ordinal = TCSD_ORD_GETRANDOM;
 	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
 
+	*randomBytes = NULL;
+
 	if (setData(TCSD_PACKET_TYPE_UINT32, 0, &hte->tcsContext, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	if (setData(TCSD_PACKET_TYPE_UINT32, 1, &bytesRequested, 0, &hte->comm))
@@ -57,13 +59,15 @@ RPC_GetRandom_TP(struct host_table_entry *hte,
 			result = TSPERR(TSS_E_OUTOFMEMORY);
 			goto done;
 		}
-		if (getData(TCSD_PACKET_TYPE_PBYTE, 1, *randomBytes, bytesRequested, &hte->comm)) {
-			free(*randomBytes);
+		if (getData(TCSD_PACKET_TYPE_PBYTE, 1, *randomBytes, bytesRequested, &hte->comm))
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
-		}
 	}
 
 done:
+	if (result) {
+		free(*randomBytes);
+		*randomBytes = NULL;
+	}
 	return result;
 }
 

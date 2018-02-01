@@ -39,6 +39,8 @@ RPC_GetTPMCapability_TP(struct host_table_entry *hte,
 	hte->comm.hdr.u.ordinal = TCSD_ORD_GETCAPABILITY;
 	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
 
+	*resp = NULL;
+
 	if (setData(TCSD_PACKET_TYPE_UINT32, 0, &hte->tcsContext, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	if (setData(TCSD_PACKET_TYPE_UINT32, 1, &capArea, 0, &hte->comm))
@@ -65,13 +67,15 @@ RPC_GetTPMCapability_TP(struct host_table_entry *hte,
 			result = TSPERR(TSS_E_OUTOFMEMORY);
 			goto done;
 		}
-		if (getData(TCSD_PACKET_TYPE_PBYTE, 1, *resp, *respSize, &hte->comm)) {
-			free(*resp);
+		if (getData(TCSD_PACKET_TYPE_PBYTE, 1, *resp, *respSize, &hte->comm))
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
-		}
 	}
 
 done:
+	if (result) {
+		free(*resp);
+		*resp = NULL;
+	}
 	return result;
 }
 

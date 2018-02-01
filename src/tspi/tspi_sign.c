@@ -43,6 +43,8 @@ Tspi_Hash_Sign(TSS_HHASH hHash,			/* in */
 	if (pulSignatureLength == NULL || prgbSignature == NULL)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 
+	*prgbSignature = NULL;
+
 	if ((result = obj_hash_get_tsp_context(hHash, &tspContext)))
 		return result;
 
@@ -82,21 +84,21 @@ Tspi_Hash_Sign(TSS_HHASH hHash,			/* in */
 		result |= Trspi_Hash_UINT32(&hashCtx, TPM_ORD_Sign);
 		result |= Trspi_Hash_UINT32(&hashCtx, *pulSignatureLength);
 		result |= Trspi_HashUpdate(&hashCtx, *pulSignatureLength, *prgbSignature);
-		if ((result |= Trspi_HashFinal(&hashCtx, digest.digest))) {
-			free(*prgbSignature);
+		if ((result |= Trspi_HashFinal(&hashCtx, digest.digest)))
 			goto done;
-		}
 
-		if ((result = obj_policy_validate_auth_oiap(hPolicy, &digest, &privAuth))) {
-			free(*prgbSignature);
+		if ((result = obj_policy_validate_auth_oiap(hPolicy, &digest, &privAuth)))
 			goto done;
-		}
 	}
 
 	if ((result = __tspi_add_mem_entry(tspContext, *prgbSignature)))
-		free(*prgbSignature);
+		goto done;
 
 done:
+	if (result) {
+		free(*prgbSignature);
+		*prgbSignature = NULL;
+	}
 	free_tspi(tspContext, data);
 	return result;
 }

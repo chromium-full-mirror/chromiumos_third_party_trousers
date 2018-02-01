@@ -41,6 +41,8 @@ RPC_Sign_TP(struct host_table_entry *hte,
 	hte->comm.hdr.u.ordinal = TCSD_ORD_SIGN;
 	LogDebugFn("TCS Context: 0x%x", hte->tcsContext);
 
+	*sig = NULL;
+
 	if (setData(TCSD_PACKET_TYPE_UINT32, 0, &hte->tcsContext, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	if (setData(TCSD_PACKET_TYPE_UINT32, 1, &keyHandle, 0, &hte->comm))
@@ -79,15 +81,14 @@ RPC_Sign_TP(struct host_table_entry *hte,
 			result = TSPERR(TSS_E_OUTOFMEMORY);
 			goto done;
 		}
-		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *sig, *sigSize, &hte->comm)) {
-			result = free_tspi(hte->tspContext, *sig);
-			if (result == TSS_SUCCESS) 
-				result = TSPERR(TSS_E_INTERNAL_ERROR);
-			else
-				free(*sig);	
-		}
+		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *sig, *sigSize, &hte->comm))
+			result = TSPERR(TSS_E_INTERNAL_ERROR);
 	}
 
 done:
+	if (result) {
+		free(*sig);
+		*sig = NULL;
+	}
 	return result;
 }
