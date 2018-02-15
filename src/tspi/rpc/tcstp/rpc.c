@@ -255,6 +255,14 @@ sendTCSDPacket(struct host_table_entry *hte)
 	TSS_RESULT rc;
 	UINT64 offset = 0;
 
+#ifdef MOCK_TPM
+	/*
+	 * If there's no real TPM just return failure right away.  The rest
+	 * of the system will deal with it.
+	 */
+	return TSPERR(TSS_E_COMM_FAILURE);
+#endif
+
 	Trspi_LoadBlob_UINT32(&offset, hte->comm.hdr.packet_size, hte->comm.buf);
 	Trspi_LoadBlob_UINT32(&offset, hte->comm.hdr.u.ordinal, hte->comm.buf);
 	Trspi_LoadBlob_UINT32(&offset, hte->comm.hdr.num_parms, hte->comm.buf);
