@@ -347,7 +347,7 @@ send_to_socket(int sock, void *buffer, int size)
 TSS_RESULT
 send_init(struct host_table_entry *hte)
 {
-	int sd;
+	int sd = -1;
 	int recv_size;
 	BYTE *buffer;
 	TSS_RESULT result;
@@ -405,7 +405,8 @@ send_init(struct host_table_entry *hte)
 	return TSS_SUCCESS;
 
 err_exit:
-	close(sd);
+	if (sd != -1)
+		close(sd);
 	return result;
 }
 
