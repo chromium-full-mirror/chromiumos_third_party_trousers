@@ -20,11 +20,12 @@
 
 #ifdef __cplusplus
 
-#include <assert.h>
-
 #include <trousers/tss.h>
-#include <trousers/trousers.h>
+#include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 #include <vector>
+
+#include <base/logging.h>
+#include <base/macros.h>
 
 namespace trousers {
 
@@ -34,7 +35,11 @@ class ScopedTssContextRelease {
     // Usually, only |context| is used, but if the ScopedTssContext is
     // used slightly differently, it may end up with a context in |unused|.
     // For now, treat that as a bug.
-    assert(unused == 0);
+    if (unused) {
+      NOTREACHED() << "Unexpected data in the unused argument - a misuse of "
+                      "ScopedTssContext. Please report to crbug.com/821825";
+      return;
+    }
     if (context)
       Tspi_Context_Close(context);
   }
@@ -43,18 +48,28 @@ class ScopedTssContextRelease {
 class ScopedTssMemoryRelease {
  public:
   inline void operator()(TSS_HCONTEXT context, BYTE* memory) const {
-    // TODO(wad) make the test code friendly for assert()ing context/memory != 0
-    if (context && memory)
-      Tspi_Context_FreeMemory(context, memory);
+    if (!memory)
+      return;
+    if (!context) {
+      NOTREACHED() << "Leaking Trousers memory due to null context. Please "
+                      "report to crbug.com/821825";
+      return;
+    }
+    Tspi_Context_FreeMemory(context, memory);
   }
 };
 
 class ScopedTssObjectRelease {
  public:
   inline void operator()(TSS_HCONTEXT context, TSS_HOBJECT handle) const {
-    // TODO(wad) make the test code friendly for assert() context/handle != 0
-    if (context && handle)
-      Tspi_Context_CloseObject(context, handle);
+    if (!handle)
+      return;
+    if (!context) {
+      NOTREACHED() << "Leaking Trousers handle due to null context. Please "
+                      "report to crbug.com/821825";
+      return;
+    }
+    Tspi_Context_CloseObject(context, handle);
   }
 };
 
@@ -101,6 +116,8 @@ class ScopedTssType {
   ReleaseProc release_;
   TSS_HCONTEXT context_;
   TssType type_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScopedTssType);
 };
 
 // Wrap ScopedTssObject to allow implicit conversion only when safe.
@@ -109,8 +126,8 @@ template<class TssType = TSS_HOBJECT,
 class ScopedTssObject : public ScopedTssType<TssType, ReleaseProc> {
  public:
   // Enforce a context for scoped objects.
-  explicit ScopedTssObject(TSS_HCONTEXT c, TssType t = 0) {}
-  virtual ~ScopedTssObject() {}
+  explicit ScopedTssObject(TSS_HCONTEXT c, TssType t = 0)
+    : ScopedTssType<TssType, ReleaseProc>(c, t) {}
 
   // Allow implicit conversion to anything TSS_HOBJECT based.
   virtual operator TssType() {
@@ -124,7 +141,6 @@ class ScopedTssContext
   // Enforce a context for scoped objects.
   explicit ScopedTssContext(TSS_HCONTEXT t = 0)
     : ScopedTssObject<TSS_HCONTEXT,ScopedTssContextRelease>(0, t) {}
-  virtual ~ScopedTssContext() {}
 };
 
 // Provide clear-cut typedefs for the common cases.
