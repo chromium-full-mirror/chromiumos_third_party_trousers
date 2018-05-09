@@ -36,6 +36,7 @@ struct tpm_device_node *opened_device = NULL;
 BYTE txBuffer[TDDL_TXBUF_SIZE];
 TSS_BOOL use_in_socket = FALSE;
 struct tcsd_config *_tcsd_options = NULL;
+int retry_count = 2;
 
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -52,6 +53,17 @@ open_device()
 	char *tcp_device_hostname = NULL;
 	char *un_socket_device_path = NULL;
 	char *tcp_device_port_string = NULL;
+	char *retry_count_string = NULL;
+
+	if ((retry_count_string = getenv("TCSD_TPM_RW_RETRY_COUNT")) != NULL) {
+		errno = 0;
+		retry_count = strtol(retry_count_string, NULL, 10);
+		if (errno != 0) {
+		  LogWarn("Failed to parse TCSD_TPM_RW_RETRY_COUNT, "
+			     "strtol: (%d) %s", errno, strerror(errno));
+		  retry_count = 2;
+		}
+	}
 	
 	if (getenv("TCSD_USE_TCP_DEVICE")) {
 		if ((tcp_device_hostname = getenv("TCSD_TCP_DEVICE_HOSTNAME")) == NULL)
@@ -162,7 +174,7 @@ TSS_RESULT
 Tddli_TransmitData(BYTE * pTransmitBuf, UINT32 TransmitBufLen, BYTE * pReceiveBuf,
 		   UINT32 * pReceiveBufLen)
 {
-	int sizeResult;
+	int i, sizeResult;
 	UINT16 request_tag;
 	TSS_RESULT result;
 	static CMetricsLibrary metrics_library_handle = NULL;
@@ -200,12 +212,25 @@ Tddli_TransmitData(BYTE * pTransmitBuf, UINT32 TransmitBufLen, BYTE * pReceiveBu
 			LogInfo("Falling back to Read/Write device support.");
 			/* fall through */
 		case TDDL_TRANSMIT_RW:
-			if ((sizeResult = write(opened_device->fd,
-						txBuffer,
-						TransmitBufLen)) == (int)TransmitBufLen) {
+			i = 0;
+			while ((sizeResult = write(opened_device->fd,
+						   txBuffer,
+						   TransmitBufLen)) < 0 &&
+				i++ < retry_count) {
+				LogWarn("write to device %s failed, retrying (%d): %s",
+					 opened_device->path,
+					 i,
+					 strerror(errno));
+			}
+			if (sizeResult == (int)TransmitBufLen) {
 				opened_device->transmit = TDDL_TRANSMIT_RW;
-				sizeResult = read(opened_device->fd, txBuffer,
-						  TDDL_TXBUF_SIZE);
+				i = 0;
+				while ((sizeResult = read(opened_device->fd, txBuffer,
+							  TDDL_TXBUF_SIZE)) < 0 &&
+					i++ < retry_count) {
+					LogWarn("read from device %s failed, retrying (%d): %s",
+						 opened_device->path, i, strerror(errno));
+				}
 				break;
 			} else {
 				if (sizeResult == -1) {
