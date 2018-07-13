@@ -172,6 +172,6 @@ void	   thread_signal_init();
 struct sigaction tcsd_sa_int;
 struct sigaction tcsd_sa_chld;
 
-#define TCSD_UNIX_SOCKET "/var/run/tcsd.socket"
+#define TCSD_UNIX_SOCKET "/run/tcsd/tcsd.socket"
 
 #endif
