@@ -70,7 +70,12 @@ create_tcs_context()
 	struct tcs_context *ret = (struct tcs_context *)calloc(1, sizeof(struct tcs_context));
 
 	if (ret != NULL) {
-		ret->handle = getNextHandle();
+		while (1) {
+			ret->handle = getNextHandle();
+			if (!get_context(ret->handle))
+				break;
+			LogInfo("getNextHandle() produced duplicate handle, retrying.");
+		}
 		COND_INIT(ret->cond);
 	}
 	return ret;
