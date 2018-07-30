@@ -115,22 +115,23 @@ void
 destroy_context(TCS_CONTEXT_HANDLE handle)
 {
 	struct tcs_context *toKill;
-	struct tcs_context *previous;
 
 	MUTEX_LOCK(tcs_ctx_lock);
 
-	toKill = get_context(handle);
-	previous = get_previous_context(handle);
-
-	if (!previous && tcs_context_table->handle == handle) {
+	if (tcs_context_table && tcs_context_table->handle == handle) {
 		/* this means that toKill is the first one */
+		toKill = tcs_context_table;
 		tcs_context_table = tcs_context_table->next;
-	} else if (previous && toKill) {
-		/* both are found */
-		previous->next = toKill->next;
 	} else {
-		MUTEX_UNLOCK(tcs_ctx_lock);
-		return;
+		struct tcs_context *previous;
+
+		previous = get_previous_context(handle);
+		if (!previous) {
+			MUTEX_UNLOCK(tcs_ctx_lock);
+			return;
+		}
+		toKill = previous->next;
+		previous->next = toKill->next;
 	}
 
 	MUTEX_UNLOCK(tcs_ctx_lock);
