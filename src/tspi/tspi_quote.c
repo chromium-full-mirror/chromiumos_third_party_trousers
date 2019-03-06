@@ -28,7 +28,7 @@ Tspi_TPM_Quote(TSS_HTPM hTPM,				/* in */
 	       TSS_HPCRS hPcrComposite,			/* in */
 	       TSS_VALIDATION * pValidationData)	/* in, out */
 {
-	TCPA_RESULT result;
+	TCPA_RESULT result = TSS_SUCCESS;
 	TPM_AUTH privAuth;
 	TPM_AUTH *pPrivAuth = &privAuth;
 	UINT64 offset;
@@ -41,37 +41,51 @@ Tspi_TPM_Quote(TSS_HTPM hTPM,				/* in */
 	UINT32 validationLength = 0;
 	BYTE *validationData = NULL;
 	UINT32 pcrDataOutSize;
-	BYTE *pcrDataOut;
+	BYTE *pcrDataOut = NULL;
 	UINT32 keyDataSize;
-	BYTE *keyData;
+	BYTE *keyData = NULL;
 	TSS_KEY keyContainer;
 	BYTE quoteinfo[1024];
 	TSS_BOOL usesAuth;
 	TSS_HCONTEXT tspContext;
 	TCPA_VERSION version = {1, 1, 0, 0};
 	Trspi_HashCtx hashCtx;
+	TCPA_PCR_COMPOSITE pcrComp;
+
+	__tspi_memset(&keyContainer, 0, sizeof(TSS_KEY));
+	__tspi_memset(&pcrComp, 0, sizeof(pcrComp));
+	if (pValidationData) {
+		pValidationData->rgbValidationData = NULL;
+		pValidationData->rgbData = NULL;
+		pValidationData->ulValidationDataLength = 0;
+		pValidationData->ulDataLength = 0;
+	}
 
 	if ((result = obj_tpm_get_tsp_context(hTPM, &tspContext)))
-		return result;
+		goto done;
 
-	if (hPcrComposite && !obj_is_pcrs(hPcrComposite))
-		return TSPERR(TSS_E_INVALID_HANDLE);
+	if (hPcrComposite && !obj_is_pcrs(hPcrComposite)) {
+		result = TSPERR(TSS_E_INVALID_HANDLE);
+		goto done;
+	}
 
 	/*  get the identKey Policy */
 	if ((result = obj_rsakey_get_policy(hIdentKey, TSS_POLICY_USAGE, &hPolicy, &usesAuth)))
-		return result;
+		goto done;
 
 	/*  get the Identity TCS keyHandle */
 	if ((result = obj_rsakey_get_tcs_handle(hIdentKey, &tcsKeyHandle)))
-		return result;
+		goto done;
 
 	if (pValidationData == NULL) {
 		if ((result = get_local_random(tspContext, FALSE, sizeof(TCPA_NONCE),
 					       (BYTE **)antiReplay.nonce)))
-			return result;
+			goto done;
 	} else {
-		if (pValidationData->ulExternalDataLength < sizeof(antiReplay.nonce))
-			return TSPERR(TSS_E_BAD_PARAMETER);
+		if (pValidationData->ulExternalDataLength < sizeof(antiReplay.nonce)) {
+			result = TSPERR(TSS_E_BAD_PARAMETER);
+			goto done;
+		}
 
 		memcpy(antiReplay.nonce, pValidationData->rgbExternalData,
 		       sizeof(antiReplay.nonce));
@@ -80,7 +94,7 @@ Tspi_TPM_Quote(TSS_HTPM hTPM,				/* in */
 	pcrDataSize = 0;
 	if (hPcrComposite) {
 		if ((result = obj_pcrs_get_selection(hPcrComposite, &pcrDataSize, pcrData)))
-			return result;
+			goto done;
 	}
 
 	result = Trspi_HashInit(&hashCtx, TSS_HASH_SHA1);
@@ -88,12 +102,12 @@ Tspi_TPM_Quote(TSS_HTPM hTPM,				/* in */
 	result |= Trspi_HashUpdate(&hashCtx, TPM_SHA1_160_HASH_LEN, antiReplay.nonce);
 	result |= Trspi_HashUpdate(&hashCtx, pcrDataSize, pcrData);
 	if ((result |= Trspi_HashFinal(&hashCtx, digest.digest)))
-		return result;
+		goto done;
 
 	if (usesAuth) {
 		if ((result = secret_PerformAuth_OIAP(hIdentKey, TPM_ORD_Quote, hPolicy, FALSE,
 						      &digest, &privAuth))) {
-			return result;
+			goto done;
 		}
 		pPrivAuth = &privAuth;
 	} else {
@@ -103,7 +117,7 @@ Tspi_TPM_Quote(TSS_HTPM hTPM,				/* in */
 	if ((result = TCS_API(tspContext)->Quote(tspContext, tcsKeyHandle, &antiReplay, pcrDataSize,
 						 pcrData, pPrivAuth, &pcrDataOutSize, &pcrDataOut,
 						 &validationLength, &validationData)))
-		return result;
+		goto done;
 
 	result = Trspi_HashInit(&hashCtx, TSS_HASH_SHA1);
 	result |= Trspi_Hash_UINT32(&hashCtx, result);
@@ -112,57 +126,36 @@ Tspi_TPM_Quote(TSS_HTPM hTPM,				/* in */
 	result |= Trspi_Hash_UINT32(&hashCtx, validationLength);
 	result |= Trspi_HashUpdate(&hashCtx, validationLength, validationData);
 	if ((result |= Trspi_HashFinal(&hashCtx, digest.digest)))
-		return result;
+		goto done;
 
 	if (usesAuth == TRUE) {
 		if ((result = obj_policy_validate_auth_oiap(hPolicy, &digest, &privAuth))) {
-			free(pcrDataOut);
-			free(validationData);
-			return result;
+			goto done;
 		}
 	}
 
 	if (hPcrComposite) {
-		TCPA_PCR_COMPOSITE pcrComp;
-
-		__tspi_memset(&pcrComp, 0, sizeof(pcrComp)); 
 		offset = 0;
 		if ((result = Trspi_UnloadBlob_PCR_COMPOSITE(&offset, pcrDataOut, &pcrComp))) {
-			free(pcrDataOut);
-			free(pcrComp.pcrValue);
-			free(pcrComp.select.pcrSelect);
-			free(validationData);
-			return result;
+			goto done;
 		}
 
-		if ((result = obj_pcrs_set_values(hPcrComposite, &pcrComp))) {
-			free(pcrDataOut);
-			free(pcrComp.pcrValue);
-			free(pcrComp.select.pcrSelect);
-			free(validationData);
-			return result;
-		}
-
-		free(pcrComp.pcrValue);
-		free(pcrComp.select.pcrSelect);
+		if ((result = obj_pcrs_set_values(hPcrComposite, &pcrComp)))
+			goto done;
 	}
 
 	if ((result = Tspi_GetAttribData(hIdentKey, TSS_TSPATTRIB_KEY_BLOB,
 					 TSS_TSPATTRIB_KEYBLOB_BLOB, &keyDataSize, &keyData))) {
-		free(pcrDataOut);
-		free(validationData);
-		return result;
+		goto done;
 	}
 
 	/* create the validation data */
 	offset = 0;
-	__tspi_memset(&keyContainer, 0, sizeof(TSS_KEY));
 	if ((result = UnloadBlob_TSS_KEY(&offset, keyData, &keyContainer)))
-		return result;
+		goto done;
 
 	/*  creating pcrCompositeHash */
 	Trspi_Hash(TSS_HASH_SHA1, pcrDataOutSize, pcrDataOut, digest.digest);
-	free(pcrDataOut);
 
 	/* generate Quote_info struct */
 	/* 1. add version */
@@ -192,34 +185,48 @@ Tspi_TPM_Quote(TSS_HTPM hTPM,				/* in */
 					   keyContainer.pubKey.keyLength,
 					   validationData,
 					   validationLength))) {
-			free_key_refs(&keyContainer);
-			free(validationData);
-			return result;
+			goto done;
 		}
-		free_key_refs(&keyContainer);
 	} else {
-		free_key_refs(&keyContainer);
-
 		pValidationData->rgbValidationData = calloc_tspi(tspContext, validationLength);
 		if (pValidationData->rgbValidationData == NULL) {
 			LogError("malloc of %u bytes failed.", validationLength);
-			return TSPERR(TSS_E_OUTOFMEMORY);
+			result = TSPERR(TSS_E_OUTOFMEMORY);
+			goto done;
 		}
 		pValidationData->ulValidationDataLength = validationLength;
 		memcpy(pValidationData->rgbValidationData, validationData, validationLength);
-		free(validationData);
 
 		pValidationData->rgbData = calloc_tspi(tspContext, offset);
 		if (pValidationData->rgbData == NULL) {
 			LogError("malloc of %" PRIu64 " bytes failed.", offset);
-			free_tspi(tspContext, pValidationData->rgbValidationData);
-			pValidationData->rgbValidationData = NULL;
-			pValidationData->ulValidationDataLength = 0;
-			return TSPERR(TSS_E_OUTOFMEMORY);
+			result = TSPERR(TSS_E_OUTOFMEMORY);
+			goto done;
 		}
 		pValidationData->ulDataLength = (UINT32)offset;
 		memcpy(pValidationData->rgbData, quoteinfo, offset);
 	}
 
-	return TSS_SUCCESS;
+done:
+	free(validationData);
+	free(pcrDataOut);
+	if (keyData)
+		free_tspi(tspContext, keyData);
+	free_key_refs(&keyContainer);
+	free(pcrComp.pcrValue);
+	free(pcrComp.select.pcrSelect);
+	if (result && pValidationData) {
+		if (pValidationData->rgbData) {
+			free_tspi(tspContext, pValidationData->rgbData);
+			pValidationData->rgbData = NULL;
+		}
+		if (pValidationData->rgbValidationData) {
+			free_tspi(tspContext, pValidationData->rgbValidationData);
+			pValidationData->rgbValidationData = NULL;
+		}
+		pValidationData->ulValidationDataLength = 0;
+		pValidationData->ulDataLength = 0;
+	}
+
+	return result;
 }
