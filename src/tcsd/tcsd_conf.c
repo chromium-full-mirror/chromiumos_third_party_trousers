@@ -759,7 +759,7 @@ conf_file_init(struct tcsd_config *conf)
 #ifndef SOLARIS
 	struct group *grp;
 	struct passwd *pw;
-	mode_t mode = (S_IRUSR|S_IWUSR);
+	mode_t mode = (S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
 #endif /* SOLARIS */
 	TSS_RESULT result;
 
@@ -820,9 +820,18 @@ conf_file_init(struct tcsd_config *conf)
 		return TCSERR(TSS_E_INTERNAL_ERROR);
 	}
 
+	/* Chrome OS:
+	 * Config files for Chrome OS is shipped with the images, and contains
+	 * no sensitive information, and protected by rootfs verification from
+	 * alteration. It should be okay to open the read access to all others
+	 * too.
+	 * Otherwise, with SELinux, tcsd will require special privileges to
+	 * override POSIX permission bits to read configuration file.
+	 */
 	/* make sure only the tss user can manipulate the config file */
-	if (((stat_buf.st_mode & 0777) ^ mode) != 0) {
-		LogError("TCSD config file (%s) must be mode 0600", tcsd_config_file);
+	if (((stat_buf.st_mode & 0777) | mode ) != mode) {
+		LogError("TCSD config file (%s) should not be writable by non-tss user.",
+			 tcsd_config_file);
 		return TCSERR(TSS_E_INTERNAL_ERROR);
 	}
 #endif /* SOLARIS */

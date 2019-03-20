@@ -5,7 +5,7 @@ install: install-exec-hook
 	if test ! -e ${DESTDIR}/@sysconfdir@/tcsd.conf; then mkdir -p ${DESTDIR}/@sysconfdir@ && cp tcsd.conf ${DESTDIR}/@sysconfdir@; fi
 if !NOUSERCHECK
 	/bin/chown tss:tss ${DESTDIR}/@sysconfdir@/tcsd.conf || true
-	/bin/chmod 0600 ${DESTDIR}/@sysconfdir@/tcsd.conf
+	/bin/chmod 0644 ${DESTDIR}/@sysconfdir@/tcsd.conf
 endif
 
 install-exec-hook:
