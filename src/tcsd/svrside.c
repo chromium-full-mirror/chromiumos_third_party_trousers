@@ -543,13 +543,19 @@ main(int argc, char **argv)
 #endif
 #endif
 
-	if (setup_server_sockets(socks_info, pwd) == -1) {
-		LogError("Could not create sockets to listen to connections. Aborting...");
+	if (pwd && (setgid(pwd->pw_gid) == -1)) {
+		LogError("setgid: %s", strerror(errno));
 		return -1;
 	}
 
 	if (pwd && (setuid(pwd->pw_uid) == -1)) {
 		LogError("setuid: %s", strerror(errno));
+		return -1;
+	}
+
+	if (setup_server_sockets(socks_info, pwd) == -1) {
+		LogError("Could not create sockets to listen to connections. Aborting...");
+		return -1;
 	}
 
 	if (getenv("TCSD_FOREGROUND") == NULL) {
