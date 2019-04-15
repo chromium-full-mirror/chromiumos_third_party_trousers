@@ -270,11 +270,8 @@ Tddli_TransmitData(BYTE * pTransmitBuf, UINT32 TransmitBufLen, BYTE * pReceiveBu
 	 * code and ship stats.
 	 */
 	result = Decode_UINT32(pReceiveBuf + 6);
-	if (metrics_library_handle == NULL) {
+	if (metrics_library_handle == NULL)
 		metrics_library_handle = CMetricsLibraryNew();
-		if (metrics_library_handle != NULL)
-			CMetricsLibraryInit(metrics_library_handle);
-	}
 	if (metrics_library_handle != NULL) {
 		CMetricsLibrarySendSparseToUMA(metrics_library_handle,
 					       "Platform.TPM.ErrorCode",
