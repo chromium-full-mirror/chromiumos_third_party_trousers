@@ -547,6 +547,7 @@ get_socket(struct host_table_entry *hte, int *sd)
 		LogWarn("Could not connect to machine: %s", (char*)hte->hostname);
 
 		close(*sd);
+		*sd = -1;
 	}
 
 	if (p == NULL) {
