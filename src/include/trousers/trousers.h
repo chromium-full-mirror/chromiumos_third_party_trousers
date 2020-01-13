@@ -11,6 +11,8 @@
 #ifndef _TROUSERS_H_
 #define _TROUSERS_H_
 
+#include <trousers/tss.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
