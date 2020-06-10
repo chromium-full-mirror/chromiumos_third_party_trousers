@@ -43,13 +43,27 @@ add_cache_entry(TCS_CONTEXT_HANDLE hContext,
 		if ((result = UnloadBlob_TSS_KEY(&offset, blob, &key)))
 			return result;
 
-		if ((tcsHandle = mc_get_handle_by_pub(&key.pubKey, hParent)) == NULL_TCS_HANDLE) {
-			pKey = &key;
-		} else {
-			mc_set_slot_by_handle(tcsHandle, hSlot);
-			*new = tcsHandle;
-			goto done;
+		// If the key requires auth data, then the key cannot be used.
+		TSS_BOOL can_cache = !key.authDataUsage;
+
+		// Try to get it from cache.
+		tcsHandle = mc_get_handle_by_pub(&key.pubKey, hParent);
+		if (tcsHandle != NULL_TCS_HANDLE) {
+			// Cache hit.
+			if (can_cache) {
+				mc_set_slot_by_handle(tcsHandle, hSlot);
+				*new = tcsHandle;
+				goto done;
+			} else {
+				// Can't use the cache.
+				// Remove the existing cache so we don't have too many entries
+				// stuck in cache.
+				mc_remove_entry(tcsHandle);
+				tcsHandle = NULL_TCS_HANDLE;
+			}
 		}
+		// Key not found in cache or can't use cache.
+		pKey = &key;
 	}
 
 	LogDebugFn("No existing key handle for this key, creating new one...");
