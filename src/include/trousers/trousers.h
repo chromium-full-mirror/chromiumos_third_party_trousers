@@ -32,6 +32,7 @@ void       Trspi_UnloadBlob_BOOL(UINT64 *offset, TSS_BOOL *dataOut, BYTE *blob);
 void       Trspi_UnloadBlob_UINT64(UINT64 *offset, UINT64 *out, BYTE *blob);
 void       Trspi_UnloadBlob_UINT32(UINT64 *offset, UINT32 *out, BYTE *blob);
 void       Trspi_UnloadBlob_UINT16(UINT64 *offset, UINT16 *out, BYTE *blob);
+TSS_RESULT Trspi_UnloadBlob_RSA_KEY_PARMS(UINT64 *offset, BYTE *blob, TCPA_RSA_KEY_PARMS *parms);
 void       Trspi_UnloadBlob_TSS_VERSION(UINT64 *offset, BYTE *blob, TSS_VERSION *out);
 void       Trspi_UnloadBlob_TCPA_VERSION(UINT64 *offset, BYTE *blob, TCPA_VERSION *out);
 TSS_RESULT Trspi_UnloadBlob_PCR_INFO(UINT64 *offset, BYTE *blob, TCPA_PCR_INFO *pcr);

@@ -19,6 +19,7 @@
 #include <iconv.h>
 #include <wchar.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #include "trousers/tss.h"
 #include "trousers_types.h"
@@ -209,6 +210,39 @@ Trspi_LoadBlob_RSA_KEY_PARMS(UINT64 *offset, BYTE *blob, TCPA_RSA_KEY_PARMS *par
 
 	if (parms->exponentSize > 0)
 		Trspi_LoadBlob(offset, parms->exponentSize, blob, parms->exponent);
+}
+
+TSS_RESULT
+Trspi_UnloadBlob_RSA_KEY_PARMS(UINT64 *offset, BYTE *blob, TCPA_RSA_KEY_PARMS *parms)
+{
+	if (!parms) {
+		UINT32 exponentSize;
+
+		Trspi_UnloadBlob_UINT32(offset, NULL, blob);
+		Trspi_UnloadBlob_UINT32(offset, NULL, blob);
+		Trspi_UnloadBlob_UINT32(offset, &exponentSize, blob);
+
+		(*offset) += exponentSize;
+
+		return TSS_SUCCESS;
+	}
+
+	Trspi_UnloadBlob_UINT32(offset, &parms->keyLength, blob);
+	Trspi_UnloadBlob_UINT32(offset, &parms->numPrimes, blob);
+	Trspi_UnloadBlob_UINT32(offset, &parms->exponentSize, blob);
+
+	if (parms->exponentSize > 0) {
+		parms->exponent = malloc(parms->exponentSize);
+		if (parms->exponent == NULL) {
+			LogError("malloc of %"PRIu32" bytes failed.", parms->exponentSize);
+			return TSPERR(TSS_E_OUTOFMEMORY);
+		}
+		Trspi_UnloadBlob(offset, parms->exponentSize, blob, parms->exponent);
+	} else {
+		parms->exponent = NULL;
+	}
+
+	return TSS_SUCCESS;
 }
 
 void
