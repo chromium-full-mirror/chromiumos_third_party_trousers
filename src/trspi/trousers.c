@@ -84,9 +84,43 @@ Trspi_UnloadBlob_PUBKEY(UINT64 *offset, BYTE *blob, TCPA_PUBKEY *pubKey)
 		return TSS_SUCCESS;
 	}
 
+	pubKey->pubKey.key = NULL;
+	pubKey->algorithmParms.parms = NULL;
 	if ((result = Trspi_UnloadBlob_KEY_PARMS(offset, blob, &pubKey->algorithmParms)))
 		return result;
+
 	if ((result = Trspi_UnloadBlob_STORE_PUBKEY(offset, blob, &pubKey->pubKey))) {
+		free(pubKey->pubKey.key);
+		free(pubKey->algorithmParms.parms);
+		pubKey->pubKey.key = NULL;
+		pubKey->pubKey.keyLength = 0;
+		pubKey->algorithmParms.parms = NULL;
+		pubKey->algorithmParms.parmSize = 0;
+		return result;
+	}
+
+	return TSS_SUCCESS;
+}
+
+TSS_RESULT
+Trspi_UnloadBlob_PUBKEY_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_PUBKEY *pubKey)
+{
+	TSS_RESULT result;
+
+	if (!pubKey) {
+		if((result = Trspi_UnloadBlob_KEY_PARMS_s(offset, blob, capacity, NULL)))
+			return result;
+		if((result = Trspi_UnloadBlob_STORE_PUBKEY_s(offset, blob, capacity, NULL)))
+			return result;
+		return TSS_SUCCESS;
+	}
+
+	pubKey->pubKey.key = NULL;
+	pubKey->algorithmParms.parms = NULL;
+	if ((result = Trspi_UnloadBlob_KEY_PARMS_s(offset, blob, capacity, &pubKey->algorithmParms)))
+		return result;
+
+	if ((result = Trspi_UnloadBlob_STORE_PUBKEY_s(offset, blob, capacity, &pubKey->pubKey))) {
 		free(pubKey->pubKey.key);
 		free(pubKey->algorithmParms.parms);
 		pubKey->pubKey.key = NULL;
@@ -121,6 +155,19 @@ Trspi_UnloadBlob(UINT64 *offset, size_t size, BYTE *from, BYTE *to)
 	(*offset) += size;
 }
 
+TSS_RESULT
+Trspi_UnloadBlob_s(UINT64 *offset, size_t size, BYTE *from, UINT64 capacity, BYTE *to)
+{
+	if (size == 0)
+		return TSS_SUCCESS;
+	if (*offset + size > capacity)
+		return TSPERR(TSS_E_BAD_PARAMETER);
+	if (to)
+		memcpy(to, &from[*offset], size);
+	(*offset) += size;
+	return TSS_SUCCESS;
+}
+
 void
 Trspi_LoadBlob_BYTE(UINT64 *offset, BYTE data, BYTE *blob)
 {
@@ -137,6 +184,17 @@ Trspi_UnloadBlob_BYTE(UINT64 *offset, BYTE *dataOut, BYTE *blob)
 	(*offset)++;
 }
 
+TSS_RESULT
+Trspi_UnloadBlob_BYTE_s(UINT64 *offset, BYTE *dataOut, BYTE *blob, UINT64 capacity)
+{
+	if (*offset + 1 > capacity)
+		return TSPERR(TSS_E_BAD_PARAMETER);
+	if (dataOut)
+		*dataOut = blob[*offset];
+	(*offset)++;
+	return TSS_SUCCESS;
+}
+
 void
 Trspi_LoadBlob_BOOL(UINT64 *offset, TSS_BOOL data, BYTE *blob)
 {
@@ -151,6 +209,17 @@ Trspi_UnloadBlob_BOOL(UINT64 *offset, TSS_BOOL *dataOut, BYTE *blob)
 	if (dataOut)
 		*dataOut = blob[*offset];
 	(*offset)++;
+}
+
+TSS_RESULT
+Trspi_UnloadBlob_BOOL_s(UINT64 *offset, TSS_BOOL *dataOut, BYTE *blob, UINT64 capacity)
+{
+	if (*offset + 1 > capacity)
+		return TSPERR(TSS_E_BAD_PARAMETER);
+	if (dataOut)
+		*dataOut = blob[*offset];
+	(*offset)++;
+	return TSS_SUCCESS;
 }
 
 void
@@ -185,6 +254,17 @@ Trspi_UnloadBlob_UINT64(UINT64 *offset, UINT64 *out, BYTE *blob)
 	(*offset) += sizeof(UINT64);
 }
 
+TSS_RESULT
+Trspi_UnloadBlob_UINT64_s(UINT64 *offset, UINT64 *out, BYTE *blob, UINT64 capacity)
+{
+	if (*offset + sizeof(UINT64) > capacity)
+		return TSPERR(TSS_E_BAD_PARAMETER);
+	if (out)
+		*out = Decode_UINT64(&blob[*offset]);
+	(*offset) += sizeof(UINT64);
+	return TSS_SUCCESS;
+}
+
 void
 Trspi_UnloadBlob_UINT32(UINT64 *offset, UINT32 *out, BYTE *blob)
 {
@@ -193,12 +273,34 @@ Trspi_UnloadBlob_UINT32(UINT64 *offset, UINT32 *out, BYTE *blob)
 	(*offset) += sizeof(UINT32);
 }
 
+TSS_RESULT
+Trspi_UnloadBlob_UINT32_s(UINT64 *offset, UINT32 *out, BYTE *blob, UINT64 capacity)
+{
+	if (*offset + sizeof(UINT32) > capacity)
+		return TSPERR(TSS_E_BAD_PARAMETER);
+	if (out)
+		*out = Decode_UINT32(&blob[*offset]);
+	(*offset) += sizeof(UINT32);
+	return TSS_SUCCESS;
+}
+
 void
 Trspi_UnloadBlob_UINT16(UINT64 *offset, UINT16 *out, BYTE *blob)
 {
 	if (out)
 		*out = Decode_UINT16(&blob[*offset]);
 	(*offset) += sizeof(UINT16);
+}
+
+TSS_RESULT
+Trspi_UnloadBlob_UINT16_s(UINT64 *offset, UINT16 *out, BYTE *blob, UINT64 capacity)
+{
+	if (*offset + sizeof(UINT16) > capacity)
+		return TSPERR(TSS_E_BAD_PARAMETER);
+	if (out)
+		*out = Decode_UINT16(&blob[*offset]);
+	(*offset) += sizeof(UINT16);
+	return TSS_SUCCESS;
 }
 
 void
@@ -238,6 +340,62 @@ Trspi_UnloadBlob_RSA_KEY_PARMS(UINT64 *offset, BYTE *blob, TCPA_RSA_KEY_PARMS *p
 			return TSPERR(TSS_E_OUTOFMEMORY);
 		}
 		Trspi_UnloadBlob(offset, parms->exponentSize, blob, parms->exponent);
+	} else {
+		parms->exponent = NULL;
+	}
+
+	return TSS_SUCCESS;
+}
+
+TSS_RESULT
+Trspi_UnloadBlob_RSA_KEY_PARMS_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_RSA_KEY_PARMS *parms)
+{
+	TSS_RESULT result;
+	if (!parms) {
+		UINT32 exponentSize;
+
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, &exponentSize, blob, capacity)))
+			return result;
+
+		if (*offset + exponentSize > capacity) {
+			return TSPERR(TSS_E_BAD_PARAMETER);
+		}
+
+		(*offset) += exponentSize;
+
+		return TSS_SUCCESS;
+	}
+
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &parms->keyLength, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &parms->numPrimes, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &parms->exponentSize, blob, capacity)))
+		return result;
+
+	if (*offset + parms->exponentSize > capacity) {
+		parms->exponent = NULL;
+		parms->exponentSize = 0;
+		return TSPERR(TSS_E_BAD_PARAMETER);
+	}
+
+	if (parms->exponentSize > 0) {
+		parms->exponent = malloc(parms->exponentSize);
+		if (parms->exponent == NULL) {
+			LogError("malloc of %"PRIu32" bytes failed.", parms->exponentSize);
+			parms->exponentSize = 0;
+			return TSPERR(TSS_E_OUTOFMEMORY);
+		}
+		if ((result = Trspi_UnloadBlob_s(offset, parms->exponentSize, blob, capacity, parms->exponent))) {
+			free(parms->exponent);
+			parms->exponent = NULL;
+			parms->exponentSize = 0;
+			return result;
+		}
 	} else {
 		parms->exponent = NULL;
 	}
@@ -570,6 +728,66 @@ Trspi_UnloadBlob_KEY_PARMS(UINT64 *offset, BYTE *blob, TCPA_KEY_PARMS *keyParms)
 }
 
 TSS_RESULT
+Trspi_UnloadBlob_KEY_PARMS_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_KEY_PARMS *keyParms)
+{
+	TSS_RESULT result;
+	if (!keyParms) {
+		UINT32 parmSize;
+
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, &parmSize, blob, capacity)))
+			return result;
+
+		if (*offset + parmSize > capacity) {
+			return TSPERR(TSS_E_BAD_PARAMETER);
+		}
+
+		(*offset) += parmSize;
+
+		return TSS_SUCCESS;
+	}
+
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &keyParms->algorithmID, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT16_s(offset, &keyParms->encScheme, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT16_s(offset, &keyParms->sigScheme, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &keyParms->parmSize, blob, capacity)))
+		return result;
+
+	if (*offset + keyParms->parmSize > capacity) {
+		keyParms->parms = NULL;
+		keyParms->parmSize = 0;
+		return TSPERR(TSS_E_BAD_PARAMETER);
+	}
+
+	if (keyParms->parmSize > 0) {
+		keyParms->parms = malloc(keyParms->parmSize);
+		if (keyParms->parms == NULL) {
+			LogError("malloc of %"PRIu32" bytes failed.", keyParms->parmSize);
+			keyParms->parmSize = 0;
+			return TSPERR(TSS_E_OUTOFMEMORY);
+		}
+		if ((result = Trspi_UnloadBlob_s(offset, keyParms->parmSize, blob, capacity, keyParms->parms))) {
+			free(keyParms->parms);
+			keyParms->parms = NULL;
+			keyParms->parmSize = 0;
+			return result;
+		}
+	} else {
+		keyParms->parms = NULL;
+	}
+
+	return TSS_SUCCESS;
+}
+
+TSS_RESULT
 Trspi_UnloadBlob_KEY12(UINT64 *offset, BYTE *blob, TPM_KEY12 *key)
 {
 	TSS_RESULT result;
@@ -707,9 +925,57 @@ Trspi_UnloadBlob_STORE_PUBKEY(UINT64 *offset, BYTE *blob, TCPA_STORE_PUBKEY *sto
 		store->key = malloc(store->keyLength);
 		if (store->key == NULL) {
 			LogError("malloc of %d bytes failed.", store->keyLength);
+			store->keyLength = 0;
 			return TSPERR(TSS_E_OUTOFMEMORY);
 		}
 		Trspi_UnloadBlob(offset, store->keyLength, blob, store->key);
+	} else {
+		store->key = NULL;
+	}
+
+	return TSS_SUCCESS;
+}
+
+TSS_RESULT
+Trspi_UnloadBlob_STORE_PUBKEY_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_STORE_PUBKEY *store)
+{
+	TSS_RESULT result;
+	if (!store) {
+		UINT32 keyLength;
+
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, &keyLength, blob, capacity)))
+			return result;
+
+		if (*offset + keyLength > capacity) {
+			return TSPERR(TSS_E_BAD_PARAMETER);
+		}
+
+		(*offset) += keyLength;
+
+		return TSS_SUCCESS;
+	}
+
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &store->keyLength, blob, capacity)))
+		return result;
+
+	if (*offset + store->keyLength > capacity) {
+		store->key = NULL;
+		store->keyLength = 0;
+		return TSPERR(TSS_E_BAD_PARAMETER);
+	}
+
+	if (store->keyLength > 0) {
+		store->key = malloc(store->keyLength);
+		if (store->key == NULL) {
+			LogError("malloc of %"PRIu32" bytes failed.", store->keyLength);
+			return TSPERR(TSS_E_OUTOFMEMORY);
+		}
+		if ((result = Trspi_UnloadBlob_s(offset, store->keyLength, blob, capacity, store->key))) {
+			free(store->key);
+			store->key = NULL;
+			store->keyLength = 0;
+			return result;
+		}
 	} else {
 		store->key = NULL;
 	}
@@ -1009,6 +1275,7 @@ Trspi_UnloadBlob_IDENTITY_REQ(UINT64 *offset, BYTE *blob, TCPA_IDENTITY_REQ *req
 
 	Trspi_UnloadBlob_UINT32(offset, &req->asymSize, blob);
 	Trspi_UnloadBlob_UINT32(offset, &req->symSize, blob);
+	req->asymAlgorithm.parms = NULL;
 	if ((result = Trspi_UnloadBlob_KEY_PARMS(offset, blob, &req->asymAlgorithm)))
 		return result;
 	if ((Trspi_UnloadBlob_KEY_PARMS(offset, blob, &req->symAlgorithm))) {
@@ -1090,6 +1357,8 @@ Trspi_UnloadBlob_IDENTITY_PROOF(UINT64 *offset, BYTE *blob, TCPA_IDENTITY_PROOF 
 	Trspi_UnloadBlob_UINT32(offset, &proof->platformSize, blob);
 	Trspi_UnloadBlob_UINT32(offset, &proof->conformanceSize, blob);
 
+	proof->identityKey.pubKey.key = NULL;
+	proof->identityKey.algorithmParms.parms = NULL;
 	if ((result = Trspi_UnloadBlob_PUBKEY(offset, blob,
 					      &proof->identityKey))) {
 		proof->labelSize = 0;
@@ -1099,6 +1368,12 @@ Trspi_UnloadBlob_IDENTITY_PROOF(UINT64 *offset, BYTE *blob, TCPA_IDENTITY_PROOF 
 		proof->conformanceSize = 0;
 		return result;
 	}
+
+	proof->labelArea = NULL;
+	proof->identityBinding = NULL;
+	proof->endorsementCredential = NULL;
+	proof->platformCredential = NULL;
+	proof->conformanceCredential = NULL;
 
 	if (proof->labelSize > 0) {
 		proof->labelArea = malloc(proof->labelSize);
@@ -1172,6 +1447,8 @@ error:
 	proof->identityBinding = NULL;
 	free(proof->endorsementCredential);
 	proof->endorsementCredential = NULL;
+	free(proof->platformCredential);
+	proof->platformCredential = NULL;
 	free(proof->conformanceCredential);
 	proof->conformanceCredential = NULL;
 	/* free identityKey */
@@ -1210,6 +1487,7 @@ Trspi_UnloadBlob_SYM_CA_ATTESTATION(UINT64 *offset, BYTE *blob, TCPA_SYM_CA_ATTE
 	}
 
 	Trspi_UnloadBlob_UINT32(offset, &sym->credSize, blob);
+	sym->algorithm.parms = NULL;
 	if ((result = Trspi_UnloadBlob_KEY_PARMS(offset, blob, &sym->algorithm))) {
 		sym->credSize = 0;
 		return result;
