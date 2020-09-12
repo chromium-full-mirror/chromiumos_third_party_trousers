@@ -66,6 +66,18 @@ TCSP_EstablishTransport_Internal(TCS_CONTEXT_HANDLE      hContext,
 	}
 
 	offset = TSS_TPM_TXBLOB_HDR_LEN;
+	LoadBlob_UINT32(&offset, keySlot, NULL);
+	LoadBlob(&offset, ulTransSessionInfoSize, NULL, rgbTransSessionInfo);
+	LoadBlob_UINT32(&offset, ulSecretSize, NULL);
+	LoadBlob(&offset, ulSecretSize, NULL, rgbSecret);
+	if (pEncKeyAuth) {
+		LoadBlob_Auth(&offset, NULL, pEncKeyAuth);
+	}
+	if (offset > TSS_TPM_TXBLOB_SIZE) {
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	}
+
+	offset = TSS_TPM_TXBLOB_HDR_LEN;
 	LoadBlob_UINT32(&offset, keySlot, txBlob);
 	LoadBlob(&offset, ulTransSessionInfoSize, txBlob, rgbTransSessionInfo);
 	LoadBlob_UINT32(&offset, ulSecretSize, txBlob);
@@ -451,6 +463,20 @@ TCSP_ReleaseTransportSigned_Internal(TCS_CONTEXT_HANDLE      hContext,
 
 	if ((result = ensureKeyIsLoaded(hContext, hSignatureKey, &keySlot)))
 		return result;
+
+	offset = TSS_TPM_TXBLOB_HDR_LEN;
+	LoadBlob_UINT32(&offset, keySlot, NULL);
+	LoadBlob(&offset, sizeof(TPM_NONCE), NULL, (BYTE *)AntiReplayNonce);
+	if (pKeyAuth) {
+		LoadBlob_Auth(&offset, NULL, pKeyAuth);
+		LoadBlob_Auth(&offset, NULL, pTransAuth);
+	} else {
+		LoadBlob_Auth(&offset, NULL, pTransAuth);
+	}
+	if (offset > TSS_TPM_TXBLOB_SIZE) {
+		result = TCSERR(TSS_E_BAD_PARAMETER);
+		goto done;
+	}
 
 	offset = TSS_TPM_TXBLOB_HDR_LEN;
 	LoadBlob_UINT32(&offset, keySlot, txBlob);

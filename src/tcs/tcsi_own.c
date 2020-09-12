@@ -23,6 +23,8 @@
 #include "tcsps.h"
 #include "req_mgr.h"
 
+#define FAKE_PUBKEY_SIZE 256
+#define FAKE_SRK_SIZE 1024
 
 TSS_RESULT
 TCSP_TakeOwnership_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
@@ -41,7 +43,8 @@ TCSP_TakeOwnership_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	UINT32 paramSize;
 	TSS_RESULT result;
 	TSS_KEY srkKeyContainer;
-	BYTE fake_pubkey[256] = { 0, }, fake_srk[2048] = { 0, };
+	BYTE fake_pubkey[FAKE_PUBKEY_SIZE] = { 0, };
+	BYTE fake_srk[FAKE_SRK_SIZE] = { 0, };
 	BYTE oldAuthDataUsage;
 	BYTE txBlob[TSS_TPM_TXBLOB_SIZE];
 
@@ -103,7 +106,23 @@ TCSP_TakeOwnership_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 			/* Set the SRK pubkey to all 0's before writing the SRK to disk, this is for
 			 * privacy reasons as outlined in the TSS spec */
 			save = srkKeyContainer.pubKey.key;
+			if (srkKeyContainer.pubKey.keyLength > FAKE_PUBKEY_SIZE) {
+				destroy_key_refs(&srkKeyContainer);
+				*srkKeySize = 0;
+				free(*srkKey);
+				result = TCSERR(TSS_E_BAD_PARAMETER);
+				goto done;
+			}
 			srkKeyContainer.pubKey.key = fake_pubkey;
+			offset = 0;
+			LoadBlob_TSS_KEY(&offset, NULL, &srkKeyContainer);
+			if (offset > FAKE_SRK_SIZE) {
+				destroy_key_refs(&srkKeyContainer);
+				*srkKeySize = 0;
+				free(*srkKey);
+				result = TCSERR(TSS_E_BAD_PARAMETER);
+				goto done;
+			}
 			offset = 0;
 			LoadBlob_TSS_KEY(&offset, fake_srk, &srkKeyContainer);
 

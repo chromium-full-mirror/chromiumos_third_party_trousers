@@ -22,6 +22,8 @@
 #include "tcslog.h"
 #include "tcsps.h"
 
+#define KEY_INFO_SIZE 1000
+
 TSS_RESULT
 TCS_RegisterKey_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 			 TSS_UUID *WrappingKeyUUID,	/* in */
@@ -578,13 +580,19 @@ TCSP_LoadKeyByUUID_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 					     phKeyTCSI, &keyslot))) {
 		LogDebugFn("LoadKeyByBlob_Internal returned 0x%x", result);
 		if (result == TCPA_E_AUTHFAIL && pLoadKeyInfo) {
-			BYTE blob[1000];
+			BYTE blob[KEY_INFO_SIZE];
 
 			/* set up a load key info struct */
 			memcpy(&pLoadKeyInfo->parentKeyUUID, &parentUuid, sizeof(TSS_UUID));
 			memcpy(&pLoadKeyInfo->keyUUID, KeyUUID, sizeof(TSS_UUID));
 
 			/* calculate the paramDigest */
+			offset = 0;
+			LoadBlob_UINT32(&offset, ordinal, NULL);
+			LoadBlob(&offset, keySize, NULL, keyBlob);
+			if (offset > KEY_INFO_SIZE) {
+				return TCSERR(TSS_E_BAD_PARAMETER);
+			}
 			offset = 0;
 			LoadBlob_UINT32(&offset, ordinal, blob);
 			LoadBlob(&offset, keySize, blob, keyBlob);

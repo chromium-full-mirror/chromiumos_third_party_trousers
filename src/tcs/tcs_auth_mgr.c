@@ -566,6 +566,12 @@ TPM_LoadAuthContext(UINT32 size, BYTE *blob, TPM_AUTHHANDLE *handle)
 	LogDebugFn("Loading %u byte auth blob back into TPM", size);
 
 	offset = 10;
+	LoadBlob_UINT32(&offset, size, NULL);
+	LoadBlob(&offset, size, NULL, blob);
+	if (offset > TSS_TPM_TXBLOB_SIZE) {
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	}
+	offset = 10;
 	LoadBlob_UINT32(&offset, size, txBlob);
 	LoadBlob(&offset, size, txBlob, blob);
 	LoadBlob_Header(TPM_TAG_RQU_COMMAND, offset, TPM_ORD_LoadAuthContext, txBlob);

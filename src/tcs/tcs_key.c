@@ -19,6 +19,8 @@
 #include "tcs_utils.h"
 #include "tcs_int_literals.h"
 
+#define KEY_PARMS_SIZE 100
+
 struct key_mem_cache *key_mem_cache_head = NULL;
 
 TSS_UUID NULL_UUID = { 0, 0, 0, 0, 0, { 0, 0, 0, 0, 0, 0 } };
@@ -234,11 +236,16 @@ canILoadThisKey(TCPA_KEY_PARMS *parms, TSS_BOOL *b)
 {
 	UINT16 subCapLength;
 	UINT64 offset;
-	BYTE subCap[100];
+	BYTE subCap[KEY_PARMS_SIZE];
 	TCPA_RESULT result;
 	UINT32 respDataLength;
 	BYTE *respData;
 
+	offset = 0;
+	LoadBlob_KEY_PARMS(&offset, NULL, parms);
+	if (offset > KEY_PARMS_SIZE) {
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	}
 	offset = 0;
 	LoadBlob_KEY_PARMS(&offset, subCap, parms);
 	subCapLength = offset;
