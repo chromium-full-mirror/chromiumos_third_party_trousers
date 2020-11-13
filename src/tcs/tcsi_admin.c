@@ -39,7 +39,7 @@ TCSP_SetOwnerInstall_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_SetOwnerInstall, &offset, txBlob, state, NULL)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_SetOwnerInstall, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, state, NULL)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -66,7 +66,7 @@ TCSP_OwnerSetDisable_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = auth_mgr_check(hContext, &ownerAuth->AuthHandle)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_OwnerSetDisable, &offset, txBlob, disableState,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_OwnerSetDisable, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, disableState,
 				    ownerAuth)))
 		goto done;
 
@@ -99,7 +99,7 @@ TCSP_DisableOwnerClear_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = auth_mgr_check(hContext, &ownerAuth->AuthHandle)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_DisableOwnerClear, &offset, txBlob, ownerAuth)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_DisableOwnerClear, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, ownerAuth)))
 		goto done;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -127,7 +127,7 @@ TCSP_ForceClear_Internal(TCS_CONTEXT_HANDLE hContext)	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_ForceClear, &offset, txBlob, NULL)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_ForceClear, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, NULL)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -150,7 +150,7 @@ TCSP_DisableForceClear_Internal(TCS_CONTEXT_HANDLE hContext)	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_DisableForceClear, &offset, txBlob, NULL)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_DisableForceClear, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, NULL)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -203,7 +203,7 @@ TCSP_PhysicalDisable_Internal(TCS_CONTEXT_HANDLE hContext)	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_PhysicalDisable, &offset, txBlob, NULL)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_PhysicalDisable, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, NULL)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -227,7 +227,7 @@ TCSP_PhysicalEnable_Internal(TCS_CONTEXT_HANDLE hContext)	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_PhysicalEnable, &offset, txBlob, NULL)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_PhysicalEnable, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, NULL)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -252,7 +252,7 @@ TCSP_PhysicalSetDeactivated_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_PhysicalSetDeactivated, &offset, txBlob, state, NULL)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_PhysicalSetDeactivated, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, state, NULL)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -275,7 +275,7 @@ TCSP_SetTempDeactivated_Internal(TCS_CONTEXT_HANDLE hContext)	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_SetTempDeactivated, &offset, txBlob, NULL)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_SetTempDeactivated, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, NULL)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -306,7 +306,7 @@ TCSP_SetTempDeactivated2_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 			return result;
 	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_SetTempDeactivated, &offset, txBlob, operatorAuth)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_SetTempDeactivated, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, operatorAuth)))
 		goto done;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -351,7 +351,7 @@ TCSP_FieldUpgrade_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 			goto done;
 	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_FieldUpgrade, &offset, txBlob, dataInSize, dataIn,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_FieldUpgrade, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, dataInSize, dataIn,
 				    ownerAuth, NULL)))
 		return result;
 
@@ -398,7 +398,7 @@ TCSP_SetRedirection_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 		goto done;
 	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_SetRedirection, &offset, txBlob, keySlot, c1, c2,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_SetRedirection, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, keySlot, c1, c2,
 				    privAuth)))
 		goto done;
 
@@ -432,7 +432,7 @@ TCSP_ResetLockValue_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = auth_mgr_check(hContext, &ownerAuth->AuthHandle)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_ResetLockValue, &offset, txBlob, ownerAuth)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_ResetLockValue, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, ownerAuth)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -456,7 +456,7 @@ TCSP_FlushSpecific_Common(UINT32 tpmResHandle, TPM_RESOURCE_TYPE resourceType)
 	TSS_RESULT result;
 	BYTE txBlob[TSS_TPM_TXBLOB_SIZE];
 
-	if ((result = tpm_rqu_build(TPM_ORD_FlushSpecific, &offset, txBlob, tpmResHandle,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_FlushSpecific, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, tpmResHandle,
 				    resourceType)))
 		return result;
 

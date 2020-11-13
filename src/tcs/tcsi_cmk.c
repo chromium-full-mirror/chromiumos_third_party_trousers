@@ -37,7 +37,7 @@ TCSP_CMK_SetRestrictions_Internal(TCS_CONTEXT_HANDLE	hContext,	/* in */
 	if ((result = auth_mgr_check(hContext, &ownerAuth->AuthHandle)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_CMK_SetRestrictions, &offset, txBlob,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_CMK_SetRestrictions, &offset, TSS_TPM_TXBLOB_SIZE, txBlob,
 				    Restriction, ownerAuth)))
 		goto done;
 
@@ -77,7 +77,7 @@ TCSP_CMK_ApproveMA_Internal(TCS_CONTEXT_HANDLE	hContext,		/* in */
 	if ((result = auth_mgr_check(hContext, &ownerAuth->AuthHandle)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_CMK_ApproveMA, &offset, txBlob,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_CMK_ApproveMA, &offset, TSS_TPM_TXBLOB_SIZE, txBlob,
 				    &migAuthorityDigest, ownerAuth)))
 		goto done;
 
@@ -133,7 +133,7 @@ TCSP_CMK_CreateKey_Internal(TCS_CONTEXT_HANDLE	hContext,		/* in */
 		}
 	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_CMK_CreateKey, &offset, txBlob,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_CMK_CreateKey, &offset, TSS_TPM_TXBLOB_SIZE, txBlob,
 				    parentSlot, &KeyUsageAuth, *keyDataSize, *prgbKeyData,
 				    &MigAuthApproval, &MigAuthorityDigest, pAuth))) {
 		free(*prgbKeyData);
@@ -181,7 +181,7 @@ TCSP_CMK_CreateTicket_Internal(TCS_CONTEXT_HANDLE	hContext,		/* in */
 	if ((result = auth_mgr_check(hContext, &pOwnerAuth->AuthHandle)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_CMK_CreateTicket, &offset, txBlob,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_CMK_CreateTicket, &offset, TSS_TPM_TXBLOB_SIZE, txBlob,
 				    PublicVerifyKeySize, PublicVerifyKey, &SignedData,
 				    SigValueSize, SigValue, pOwnerAuth)))
 		goto done;
@@ -243,7 +243,7 @@ TCSP_CMK_CreateBlob_Internal(TCS_CONTEXT_HANDLE	hContext,		/* in */
 			return result;
 	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_CMK_CreateBlob, &offset, txBlob,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_CMK_CreateBlob, &offset, TSS_TPM_TXBLOB_SIZE, txBlob,
 				    parentSlot, migrationType, MigrationKeyAuthSize,
 				    MigrationKeyAuth, &PubSourceKeyDigest, msaListSize, msaList,
 				    restrictTicketSize, restrictTicket, sigTicketSize, sigTicket,
@@ -301,7 +301,7 @@ TCSP_CMK_ConvertMigration_Internal(TCS_CONTEXT_HANDLE	hContext,	/* in */
 			return result;
 	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_CMK_ConvertMigration, &offset, txBlob,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_CMK_ConvertMigration, &offset, TSS_TPM_TXBLOB_SIZE, txBlob,
 				    parentSlot, &restrictTicket, &sigTicket,
 				    keyDataSize, prgbKeyData, msaListSize, msaList,
 				    randomSize, random, parentAuth)))

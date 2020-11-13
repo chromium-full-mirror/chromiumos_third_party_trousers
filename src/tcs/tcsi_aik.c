@@ -65,7 +65,7 @@ TCSP_MakeIdentity_Internal(TCS_CONTEXT_HANDLE hContext,			/* in  */
 		goto done;
 
 	offset = 0;
-	if ((result = tpm_rqu_build(TPM_ORD_MakeIdentity, &offset, txBlob, identityAuth.authdata,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_MakeIdentity, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, identityAuth.authdata,
 				    IDLabel_PrivCAHash.digest, idKeyInfoSize, idKeyInfo, pSrkAuth,
 				    pOwnerAuth)))
 		goto done;
@@ -126,7 +126,7 @@ TCSP_ActivateTPMIdentity_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 		goto done;
 
 	offset = 0;
-	if ((result = tpm_rqu_build(TPM_ORD_ActivateIdentity, &offset, txBlob, keySlot, blobSize,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_ActivateIdentity, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, keySlot, blobSize,
 				    blob, idKeyAuth, ownerAuth)))
 		goto done;
 
@@ -204,7 +204,7 @@ TCSP_MakeIdentity2_Internal(TCS_CONTEXT_HANDLE hContext,		/* in  */
 		goto done;
 
 	offset = 0;
-	if ((result = tpm_rqu_build(TPM_ORD_MakeIdentity, &offset, txBlob, identityAuth.authdata,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_MakeIdentity, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, identityAuth.authdata,
 				    IDLabel_PrivCAHash.digest, idKeyInfoSize, idKeyInfo, pSrkAuth,
 				    pOwnerAuth)))
 		goto done;

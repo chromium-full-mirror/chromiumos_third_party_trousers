@@ -61,7 +61,7 @@ TCSP_Quote_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ensureKeyIsLoaded(hContext, keyHandle, &keySlot)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_Quote, &offset, txBlob, keySlot, antiReplay.nonce,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_Quote, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, keySlot, antiReplay.nonce,
 				    pcrDataSizeIn, pcrDataIn, privAuth)))
 		goto done;
 

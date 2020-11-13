@@ -71,7 +71,7 @@ TCSP_CertifyKey_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ensureKeyIsLoaded(hContext, keyHandle, &keySlot)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_CertifyKey, &offset, txBlob, certKeySlot, keySlot,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_CertifyKey, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, certKeySlot, keySlot,
 				    antiReplay.nonce, certAuth, keyAuth)))
 		goto done;
 

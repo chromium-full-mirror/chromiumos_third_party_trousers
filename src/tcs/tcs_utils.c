@@ -219,13 +219,14 @@ UnloadBlob(UINT64 *offset, UINT32 size, BYTE *container, BYTE *object)
 void
 LoadBlob_Header(UINT16 tag, UINT32 paramSize, UINT32 ordinal, BYTE * blob)
 {
-
-	UINT16ToArray(tag, &blob[0]);
-	LogData("Header Tag:", tag);
-	UINT32ToArray(paramSize, &blob[2]);
-	LogData("Header ParamSize:", paramSize);
-	UINT32ToArray(ordinal, &blob[6]);
-	LogData("Header Ordinal:", ordinal);
+	if (blob) {
+		UINT16ToArray(tag, &blob[0]);
+		LogData("Header Tag:", tag);
+		UINT32ToArray(paramSize, &blob[2]);
+		LogData("Header ParamSize:", paramSize);
+		UINT32ToArray(ordinal, &blob[6]);
+		LogData("Header Ordinal:", ordinal);
+	}
 #if 0
 	LogInfo("Blob's TPM Ordinal: 0x%x", ordinal);
 #endif

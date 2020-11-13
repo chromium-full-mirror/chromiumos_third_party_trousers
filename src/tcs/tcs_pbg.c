@@ -924,19 +924,60 @@ tpm_rsp_parse(TPM_COMMAND_CODE ordinal, BYTE *b, UINT32 len, ...)
 	return result;
 }
 
-/* XXX optimize these cases by always passing in lengths for blobs, no more "20 byte values" */
 TSS_RESULT
 tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 {
+	va_list ap;
+	TSS_RESULT result;
+	va_start(ap, out_blob);
+	result = tpm_rqu_build_internal(ordinal, outOffset,out_blob, ap);
+	va_end(ap);
+	return result;
+}
+
+TSS_RESULT
+tpm_rqu_build_checked(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, UINT64 maxOffset, BYTE *out_blob, ...)
+{
+	va_list ap;
+	TSS_RESULT result;
+	UINT64 tempOffset = *outOffset;
+
+	va_start(ap, out_blob);
+	result = tpm_rqu_build_internal(ordinal, &tempOffset, NULL, ap);
+	va_end(ap);
+	if (result)
+	{
+		return result;
+	}
+
+	if (tempOffset > maxOffset)
+	{
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	}
+
+	va_start(ap, out_blob);
+	result = tpm_rqu_build_internal(ordinal, outOffset, out_blob, ap);
+	va_end(ap);
+
+	if (tempOffset != *outOffset)
+	{
+		return TCSERR(TSS_E_INTERNAL_ERROR);
+	}
+
+	return result;
+}
+
+/* XXX optimize these cases by always passing in lengths for blobs, no more "20 byte values" */
+TSS_RESULT
+tpm_rqu_build_internal(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, va_list ap)
+{
 	TSS_RESULT result = TSS_SUCCESS;
 	UINT64 blob_size;
-	va_list ap;
 
 	DBG_ASSERT(ordinal);
 	DBG_ASSERT(outOffset);
-	DBG_ASSERT(out_blob);
-
-	va_start(ap, out_blob);
+	/* |out_blob| could be set to NULL in order to calculate the output size, */
+	/* so don't make assertion to its value. */
 
 	switch (ordinal) {
 #ifdef TSS_BUILD_DELEGATION
@@ -948,7 +989,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		BYTE *digest1 = va_arg(ap, BYTE *);
 		UINT32 in_len1 = va_arg(ap, UINT32);
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
-		va_end(ap);
 
 		if (!digest1 || !in_blob1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -974,7 +1014,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
 		BYTE *digest1 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!in_len1 || !in_blob1 || !digest1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1002,7 +1041,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
 		BYTE *digest1 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!keyslot1 || !in_len1 || !in_blob1 || !digest1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1034,7 +1072,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
 		TPM_AUTH *auth2 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		*outOffset += TSS_TPM_TXBLOB_HDR_LEN;
 		if (keyslot1)
@@ -1073,7 +1110,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		BYTE *in_blob2 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
 		TPM_AUTH *auth2 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!in_blob1 || !in_blob2 || !auth2) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1109,7 +1145,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
 		TPM_AUTH *auth2 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!digest1 || !in_blob1 || !auth1 || !auth2) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1143,7 +1178,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		blob1 = va_arg(ap, BYTE *);
 		auth1 = va_arg(ap, TPM_AUTH *);
 		auth2 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!dig1 || !dig2 || !blob1 || !auth2) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1177,7 +1211,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT32 in_len1 = va_arg(ap, UINT32);
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!in_blob1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1209,7 +1242,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT32 j = va_arg(ap, UINT32);
 		UINT32 k = va_arg(ap, UINT32);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		*outOffset += TSS_TPM_TXBLOB_HDR_LEN;
 		LoadBlob_UINT32(outOffset, i, out_blob);
@@ -1230,7 +1262,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		BYTE *digest1 = va_arg(ap, BYTE *);
 		UINT32 in_len1 = va_arg(ap, UINT32);
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
-		va_end(ap);
 
 		if (!digest1 || !in_blob1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1254,7 +1285,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
 		TSS_BOOL in_bool1 = va_arg(ap, int);
 		BYTE *digest2 = va_arg(ap, BYTE *);
-		va_end(ap);
 
 		if (!digest1 || !in_blob1 || !digest2) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1275,7 +1305,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 	case TPM_ORD_RevokeTrust:
 	{
 		BYTE *digest1 = va_arg(ap, BYTE *);
-		va_end(ap);
 
 		if (!digest1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1298,7 +1327,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT32 in_len1 = va_arg(ap, UINT32);
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!digest1 || !in_blob1 || !auth1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1327,7 +1355,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT32 in_len2 = va_arg(ap, UINT32);
 		BYTE *in_blob2 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!keySlot1 || !in_blob1 || !auth1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1358,7 +1385,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT32 in_len2 = va_arg(ap, UINT32);
 		BYTE *in_blob2 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!keySlot1 || !in_blob1 || !in_blob2) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1389,7 +1415,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		BYTE *digest1 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
 		TPM_AUTH *auth2 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!keySlot1 || !keySlot2 || !digest1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1427,7 +1452,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT32 in_len1 = va_arg(ap, UINT32);
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (in_len1 && !in_blob1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1460,7 +1484,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT32 in_len2 = va_arg(ap, UINT32);
 		BYTE *in_blob2 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		blob_size = in_len1 + in_len2 + TPM_DIGEST_SIZE + sizeof(TPM_AUTH);
 		if (blob_size > TSS_TPM_TXBLOB_SIZE) {
@@ -1495,7 +1518,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
 		TPM_AUTH *auth2 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!keySlot1 || !in_blob1 || !auth2) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1526,7 +1548,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT32 in_len1 = va_arg(ap, UINT32);
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!keySlot1 || !digest1 || !in_blob1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1558,7 +1579,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
 		TSS_BOOL* addVersion = va_arg(ap,TSS_BOOL *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!keySlot1 || !digest1 || !in_blob1 || !addVersion) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1592,7 +1612,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT32 in_len1 = va_arg(ap, UINT32);
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!keySlot1 || !digest1 || !digest2 || !in_blob1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1622,7 +1641,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT32 in_len2 = va_arg(ap, UINT32);
 		BYTE *in_blob2 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!in_blob1 || !in_blob2) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1650,7 +1668,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		BYTE *digest1 = va_arg(ap, BYTE *);
 		BYTE *digest2 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!keySlot1 || !digest1 || !digest2) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1680,7 +1697,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 	{
 		UINT32 in_len1 = va_arg(ap, UINT32);
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
-		va_end(ap);
 
 		if (!in_blob1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1711,7 +1727,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
 		TPM_AUTH *auth2 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (in_len1 && !in_blob1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1745,7 +1760,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
 		TPM_AUTH *auth2 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (in_len1 && !in_blob1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1778,7 +1792,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT32 in_len1 = va_arg(ap, UINT32);
 		BYTE *in_blob1 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!in_blob1 || !auth1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1805,7 +1818,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT32 in_len3 = va_arg(ap, UINT32);
 		BYTE *in_blob3 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!in_blob1 || !in_blob2 || !in_blob3 || !auth1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1833,7 +1845,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		TSS_BOOL bool1 = va_arg(ap, int);
 		BYTE *digest1 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!digest1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1862,7 +1873,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT16 type1 = va_arg(ap, int);
 		UINT32 value1 = va_arg(ap, UINT32);
 		BYTE *digest1 = va_arg(ap, BYTE *);
-		va_end(ap);
 
 		if (!digest1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1885,7 +1895,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		BYTE *digest1 = va_arg(ap, BYTE *);
 		UINT16 type2 = va_arg(ap, int);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!digest1 || !auth1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1909,7 +1918,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT32 ord1 = va_arg(ap, UINT32);
 		TSS_BOOL bool1 = va_arg(ap, int);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!auth1) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -1934,7 +1942,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 	{
 		TSS_BOOL bool1 = va_arg(ap, int);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		*outOffset += TSS_TPM_TXBLOB_HDR_LEN;
 		LoadBlob_BOOL(outOffset, bool1, out_blob);
@@ -1966,7 +1973,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 	case TPM_ORD_ForceClear:
 	{
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		*outOffset += TSS_TPM_TXBLOB_HDR_LEN;
 		if (auth1) {
@@ -1994,7 +2000,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 	{
 		UINT32 i = va_arg(ap, UINT32);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		*outOffset += TSS_TPM_TXBLOB_HDR_LEN;
 		LoadBlob_UINT32(outOffset, i, out_blob);
@@ -2013,7 +2018,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 	{
 		BYTE *digest1 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		*outOffset += TSS_TPM_TXBLOB_HDR_LEN;
 		LoadBlob(outOffset, TPM_SHA1_160_HASH_LEN, out_blob, digest1);
@@ -2031,7 +2035,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 	case TSC_ORD_PhysicalPresence:
 	{
 		UINT16 i = va_arg(ap, int);
-		va_end(ap);
 
 		*outOffset += TSS_TPM_TXBLOB_HDR_LEN;
 		LoadBlob_UINT16(outOffset, i, out_blob);
@@ -2050,7 +2053,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		BYTE *digest2 = va_arg(ap, BYTE *);
 		BYTE *digest3 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!digest1 || !in_blob1 || !digest2 || !digest3) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -2082,7 +2084,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT32 in_len2 = va_arg(ap, UINT32);
 		BYTE *in_blob2 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!digest1 || !in_blob1 || !in_blob2) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -2121,7 +2122,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT32 in_len5 = va_arg(ap, UINT32);
 		BYTE *in_blob5 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!digest1 || !in_blob1 || !in_blob2 || !in_blob3 || !in_blob4 || !in_blob5) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -2165,7 +2165,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 		UINT32 in_len3 = va_arg(ap, UINT32);
 		BYTE *in_blob3 = va_arg(ap, BYTE *);
 		TPM_AUTH *auth1 = va_arg(ap, TPM_AUTH *);
-		va_end(ap);
 
 		if (!cmkauth1 || !digest1 || !in_blob1 || !in_blob2 || !in_blob3) {
 			result = TCSERR(TSS_E_INTERNAL_ERROR);
@@ -2197,7 +2196,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 	{
 		UINT32 val1 = va_arg(ap, UINT32);
 		UINT32 val2 = va_arg(ap, UINT32);
-		va_end(ap);
 
 		*outOffset += TSS_TPM_TXBLOB_HDR_LEN;
 		LoadBlob_UINT32(outOffset, val1, out_blob);
@@ -2229,7 +2227,6 @@ tpm_rqu_build(TPM_COMMAND_CODE ordinal, UINT64 *outOffset, BYTE *out_blob, ...)
 	}
 #endif
 	default:
-		va_end(ap);
 		LogError("Unknown ordinal: 0x%x", ordinal);
 		break;
 	}

@@ -61,7 +61,7 @@ TCSP_TakeOwnership_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	LogDebug("auth data usage is %.2X", oldAuthDataUsage);
 
 	offset = 0;
-	if ((result = tpm_rqu_build(TPM_ORD_TakeOwnership, &offset, txBlob, protocolID,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_TakeOwnership, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, protocolID,
 				    encOwnerAuthSize, encOwnerAuth, encSrkAuthSize, encSrkAuth,
 				    srkInfoSize, srkInfo, ownerAuth)))
 		return result;
@@ -170,7 +170,7 @@ TCSP_OwnerClear_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = auth_mgr_check(hContext, &ownerAuth->AuthHandle)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_OwnerClear, &offset, txBlob, ownerAuth)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_OwnerClear, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, ownerAuth)))
 		goto done;
 
 	if ((result = req_mgr_submit_req(txBlob)))

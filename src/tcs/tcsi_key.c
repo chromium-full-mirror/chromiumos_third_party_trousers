@@ -204,7 +204,7 @@ TCSP_CreateWrapKey_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 		goto done;
 	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_CreateWrapKey, &offset, txBlob, parentSlot,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_CreateWrapKey, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, parentSlot,
 				    KeyUsageAuth.authdata, KeyMigrationAuth.authdata, keyInfoSize,
 				    keyInfo, pAuth)))
 		goto done;
@@ -255,7 +255,7 @@ TCSP_GetPubKey_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	}
 
 	LogDebug("GetPubKey: handle: 0x%x, slot: 0x%x", hKey, keySlot);
-	if ((result = tpm_rqu_build(TPM_ORD_GetPubKey, &offset, txBlob, keySlot, pAuth)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_GetPubKey, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, keySlot, pAuth)))
 		goto done;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -300,7 +300,7 @@ TCSP_OwnerReadInternalPub_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = auth_mgr_check(hContext, &pOwnerAuth->AuthHandle)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_OwnerReadInternalPub, &offset, txBlob, hKey,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_OwnerReadInternalPub, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, hKey,
 				    pOwnerAuth)))
 		goto done;
 
@@ -356,7 +356,7 @@ TCSP_KeyControlOwner_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 		goto done;
 	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_KeyControlOwner, &offset, txBlob, hTpmKey,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_KeyControlOwner, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, hTpmKey,
 				    ulPubKeyLength, rgbPubKey, attribName, attribValue,
 				    pOwnerAuth))) {
 		LogDebugFn("rqu build failed");

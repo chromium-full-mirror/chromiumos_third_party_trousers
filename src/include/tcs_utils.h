@@ -263,7 +263,9 @@ TSS_RESULT fill_key_info2(struct key_disk_cache *, struct key_mem_cache *, TSS_K
 
 char platform_get_runlevel();
 TSS_RESULT tpm_rsp_parse(TPM_COMMAND_CODE, BYTE *, UINT32, ...);
+TSS_RESULT tpm_rqu_build_internal(TPM_COMMAND_CODE, UINT64 *, BYTE *, va_list);
 TSS_RESULT tpm_rqu_build(TPM_COMMAND_CODE, UINT64 *, BYTE *, ...);
+TSS_RESULT tpm_rqu_build_checked(TPM_COMMAND_CODE, UINT64 *, UINT64, BYTE *, ...);
 TSS_RESULT tpm_preload_check(TCS_CONTEXT_HANDLE, TPM_COMMAND_CODE ordinal, ...);
 TSS_RESULT getKeyByCacheEntry(struct key_disk_cache *, BYTE *, UINT16 *);
 TSS_RESULT add_cache_entry(TCS_CONTEXT_HANDLE, BYTE *, TCS_KEY_HANDLE, TPM_KEY_HANDLE, TCS_KEY_HANDLE *);

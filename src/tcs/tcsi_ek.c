@@ -43,7 +43,7 @@ TCSP_CreateEndorsementKeyPair_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_CreateEndorsementKeyPair, &offset, txBlob,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_CreateEndorsementKeyPair, &offset, TSS_TPM_TXBLOB_SIZE, txBlob,
 				    antiReplay.nonce, endorsementKeyInfoSize,
 				    endorsementKeyInfo)))
 		return result;
@@ -77,7 +77,7 @@ TCSP_ReadPubek_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_ReadPubek, &offset, txBlob, TPM_NONCE_SIZE,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_ReadPubek, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, TPM_NONCE_SIZE,
 				    antiReplay.nonce)))
 		return result;
 
@@ -110,7 +110,7 @@ TCSP_DisablePubekRead_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = auth_mgr_check(hContext, &ownerAuth->AuthHandle)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_DisablePubekRead, &offset, txBlob, ownerAuth)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_DisablePubekRead, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, ownerAuth)))
 		goto done;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -144,7 +144,7 @@ TCSP_OwnerReadPubek_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = auth_mgr_check(hContext, &ownerAuth->AuthHandle)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_OwnerReadPubek, &offset, txBlob, ownerAuth)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_OwnerReadPubek, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, ownerAuth)))
 		goto done;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -181,7 +181,7 @@ TCSP_CreateRevocableEndorsementKeyPair_Internal(TCS_CONTEXT_HANDLE hContext,	/* 
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_CreateRevocableEK, &offset, txBlob,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_CreateRevocableEK, &offset, TSS_TPM_TXBLOB_SIZE, txBlob,
 				    antiReplay.nonce, endorsementKeyInfoSize,
 				    endorsementKeyInfo, genResetAuth, eKResetAuth->digest)))
 		return result;
@@ -212,7 +212,7 @@ TCSP_RevokeEndorsementKeyPair_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_RevokeTrust, &offset, txBlob, EKResetAuth.digest)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_RevokeTrust, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, EKResetAuth.digest)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))

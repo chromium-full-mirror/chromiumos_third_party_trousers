@@ -60,7 +60,7 @@ TCSP_ChangeAuth_Internal(TCS_CONTEXT_HANDLE contextHandle,	/* in */
 	if ((result = ensureKeyIsLoaded(contextHandle, parentHandle, &keySlot)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_ChangeAuth, &offset, txBlob, keySlot, protocolID,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_ChangeAuth, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, keySlot, protocolID,
 				    newAuth.authdata, entityType, encDataSize, encData, ownerAuth,
 				    entityAuth)))
 		goto done;
@@ -121,7 +121,7 @@ TCSP_ChangeAuthOwner_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = auth_mgr_check(hContext, &ownerAuth->AuthHandle)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_ChangeAuthOwner, &offset, txBlob, protocolID,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_ChangeAuthOwner, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, protocolID,
 				    newAuth.authdata, entityType, ownerAuth)))
 		goto done;
 

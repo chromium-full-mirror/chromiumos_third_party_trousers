@@ -49,7 +49,7 @@ TCSP_DirWriteAuth_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 		goto done;
 	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_DirWriteAuth, &offset, txBlob, dirIndex,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_DirWriteAuth, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, dirIndex,
 				    TPM_DIGEST_SIZE, newContents.digest, ownerAuth, NULL)))
 		goto done;
 
@@ -87,7 +87,7 @@ TCSP_DirRead_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if (dirIndex > tpm_metrics.num_dirs)
 		return TCSERR(TSS_E_BAD_PARAMETER);
 
-	if ((result = tpm_rqu_build(TPM_ORD_DirRead, &offset, txBlob, dirIndex, NULL)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_DirRead, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, dirIndex, NULL)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))

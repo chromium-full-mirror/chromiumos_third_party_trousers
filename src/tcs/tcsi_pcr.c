@@ -59,7 +59,7 @@ TCSP_Extend_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 		return TCSERR(TSS_E_FAIL);
 	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_Extend, &offset, txBlob, pcrNum, TPM_DIGEST_SIZE,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_Extend, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, pcrNum, TPM_DIGEST_SIZE,
 				    inDigest.digest, NULL, NULL)))
 		return result;
 
@@ -93,7 +93,7 @@ TCSP_PcrRead_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if (pcrNum >= tpm_metrics.num_pcrs)
 		return TCSERR(TSS_E_BAD_PARAMETER);
 
-	if ((result = tpm_rqu_build(TPM_ORD_PcrRead, &offset, txBlob, pcrNum, NULL)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_PcrRead, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, pcrNum, NULL)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -122,7 +122,7 @@ TCSP_PcrReset_Internal(TCS_CONTEXT_HANDLE hContext,      /* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_PCR_Reset, &offset, txBlob, pcrDataSizeIn, pcrDataIn)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_PCR_Reset, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, pcrDataSizeIn, pcrDataIn)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))

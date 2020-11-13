@@ -78,7 +78,7 @@ TCSP_CreateMigrationBlob_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 			break;
 	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_CreateMigrationBlob, &offset, txBlob, keyHandle,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_CreateMigrationBlob, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, keyHandle,
 				    migrationType, MigrationKeyAuthSize, MigrationKeyAuth,
 				    encDataSize, encData, parentAuth, entityAuth)))
 		return result;
@@ -129,7 +129,7 @@ TCSP_ConvertMigrationBlob_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ensureKeyIsLoaded(hContext, parentHandle, &keySlot)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_ConvertMigrationBlob, &offset, txBlob, keySlot,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_ConvertMigrationBlob, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, keySlot,
 				    inDataSize, inData, randomSize, random, parentAuth)))
 		return result;
 
@@ -196,7 +196,7 @@ TCSP_AuthorizeMigrationKey_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 			break;
 	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_AuthorizeMigrationKey, &offset, txBlob, migrateScheme,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_AuthorizeMigrationKey, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, migrateScheme,
 				    MigrationKeySize, MigrationKey, ownerAuth)))
 		return result;
 

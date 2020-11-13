@@ -142,7 +142,7 @@ TCSP_ExecuteTransport_Internal(TCS_CONTEXT_HANDLE      hContext,
 	TSS_RESULT result;
 	UINT32 paramSize, wrappedSize, val1 = 0, val2 = 0, *pVal1 = NULL, *pVal2 = NULL;
 	TCS_HANDLE handle1 = 0, handle2 = 0;
-	UINT64 offset, wrappedOffset = 0;
+	UINT64 offset, wrappedOffset = 0, tmpOffset;
 	BYTE txBlob[TSS_TPM_TXBLOB_SIZE];
 
 
@@ -299,7 +299,7 @@ map_key_handles:
 	}
 
 build_command:
-	if ((result = tpm_rqu_build(TPM_ORD_ExecuteTransport, &wrappedOffset,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_ExecuteTransport, &wrappedOffset, TSS_TPM_TXBLOB_SIZE,
 				    &txBlob[TSS_TXBLOB_WRAPPEDCMD_OFFSET], unWrappedCommandOrdinal,
 				    pVal1, pVal2, ulWrappedCmdParamInSize, rgbWrappedCmdParamIn,
 				    pWrappedCmdAuth1, pWrappedCmdAuth2)))
@@ -322,6 +322,12 @@ build_command:
 	 */
 	offset = TSS_TPM_TXBLOB_HDR_LEN;
 	/* Load wrapped command size: |wrappedCmdSize| */
+	tmpOffset = offset;
+	LoadBlob_UINT32(&tmpOffset, wrappedOffset, NULL);
+	if (tmpOffset > TSS_TPM_TXBLOB_SIZE) {
+		result = TCSERR(TSS_E_BAD_PARAMETER);
+		goto done;
+	}
 	LoadBlob_UINT32(&offset, wrappedOffset, txBlob);
 
 	/* offset + wrappedOffset is the position of the execute transport auth struct */
@@ -329,6 +335,12 @@ build_command:
 
 	if (pTransAuth) {
 		/* Load the auth for the execute transport command: |AUTHet| */
+		tmpOffset = offset;
+		LoadBlob_Auth(&tmpOffset, NULL, pTransAuth);
+		if (tmpOffset > TSS_TPM_TXBLOB_SIZE) {
+			result = TCSERR(TSS_E_BAD_PARAMETER);
+			goto done;
+		}
 		LoadBlob_Auth(&offset, txBlob, pTransAuth);
 		/* Load the outer header: |TAGet|LENet|ORDet| */
 		LoadBlob_Header(TPM_TAG_RQU_AUTH1_COMMAND, offset, TPM_ORD_ExecuteTransport,

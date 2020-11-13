@@ -58,7 +58,7 @@ TCSP_Sign_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ensureKeyIsLoaded(hContext, keyHandle, &keySlot)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_Sign, &offset, txBlob, keySlot, areaToSignSize,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_Sign, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, keySlot, areaToSignSize,
 				    areaToSign, privAuth)))
 		return result;
 

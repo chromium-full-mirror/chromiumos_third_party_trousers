@@ -47,7 +47,7 @@ TCSP_NV_DefineOrReleaseSpace_Internal(TCS_CONTEXT_HANDLE hContext, /* in */
 			goto done;
 	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_NV_DefineSpace, &offset, txBlob, cPubInfoSize, pPubInfo,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_NV_DefineSpace, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, cPubInfoSize, pPubInfo,
 				    TPM_ENCAUTH_SIZE, encAuth.authdata, pAuth)))
 		return result;
 
@@ -87,7 +87,7 @@ TCSP_NV_WriteValue_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 			goto done;
 	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_NV_WriteValue, &off_set, txBlob, hNVStore, offset,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_NV_WriteValue, &off_set, TSS_TPM_TXBLOB_SIZE, txBlob, hNVStore, offset,
 				    ulDataLength, rgbDataToWrite, privAuth)))
 		return result;
 
@@ -125,7 +125,7 @@ TCSP_NV_WriteValueAuth_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = auth_mgr_check(hContext, &NVAuth->AuthHandle)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_NV_WriteValueAuth, &off_set, txBlob, hNVStore, offset,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_NV_WriteValueAuth, &off_set, TSS_TPM_TXBLOB_SIZE, txBlob, hNVStore, offset,
 				    ulDataLength, rgbDataToWrite, NVAuth)))
 		return result;
 
@@ -166,7 +166,7 @@ TCSP_NV_ReadValue_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 			goto done;
 	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_NV_ReadValue, &off_set, txBlob, hNVStore, offset,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_NV_ReadValue, &off_set, TSS_TPM_TXBLOB_SIZE, txBlob, hNVStore, offset,
 				    *pulDataLength, privAuth)))
 		return result;
 
@@ -205,7 +205,7 @@ TCSP_NV_ReadValueAuth_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((NVAuth != NULL) && (result = auth_mgr_check(hContext, &NVAuth->AuthHandle)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_NV_ReadValueAuth, &off_set, txBlob, hNVStore, offset,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_NV_ReadValueAuth, &off_set, TSS_TPM_TXBLOB_SIZE, txBlob, hNVStore, offset,
 				    *pulDataLength, NVAuth)))
 		return result;
 

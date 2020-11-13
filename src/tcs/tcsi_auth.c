@@ -42,7 +42,7 @@ TCSP_OIAP_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_OIAP, &offset, txBlob, NULL)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_OIAP, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, NULL)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -75,7 +75,7 @@ TCSP_OSAP_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_OSAP, &offset, txBlob, entityType, entityValue,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_OSAP, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, entityType, entityValue,
 				    nonceOddOSAP.nonce)))
 		return result;
 
@@ -100,7 +100,7 @@ internal_TerminateHandle(TCS_AUTHHANDLE handle)
 	TSS_RESULT result;
 	BYTE txBlob[TSS_TPM_TXBLOB_SIZE];
 
-	if ((result = tpm_rqu_build(TPM_ORD_Terminate_Handle, &offset, txBlob, handle, NULL)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_Terminate_Handle, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, handle, NULL)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))

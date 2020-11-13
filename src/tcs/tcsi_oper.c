@@ -33,7 +33,7 @@ TCSP_SetOperatorAuth_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_SetOperatorAuth, &offset, txBlob, TPM_AUTHDATA_SIZE,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_SetOperatorAuth, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, TPM_AUTHDATA_SIZE,
 				    operatorAuth->authdata)))
 		return result;
 

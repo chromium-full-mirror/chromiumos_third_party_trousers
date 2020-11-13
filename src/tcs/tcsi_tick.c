@@ -37,7 +37,7 @@ TCSP_ReadCurrentTicks_Internal(TCS_CONTEXT_HANDLE hContext,
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_GetTicks, &offset, txBlob, NULL)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_GetTicks, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, NULL)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -80,7 +80,7 @@ TCSP_TickStampBlob_Internal(TCS_CONTEXT_HANDLE hContext,
 	if ((result = ensureKeyIsLoaded(hContext, hKey, &keySlot)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_TickStampBlob, &offset, txBlob, keySlot, antiReplay,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_TickStampBlob, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, keySlot, antiReplay,
 				    digestToStamp, privAuth)))
 		return result;
 

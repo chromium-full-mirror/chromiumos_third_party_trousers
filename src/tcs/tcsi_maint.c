@@ -48,7 +48,7 @@ TCSP_CreateMaintenanceArchive_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = auth_mgr_check(hContext, &ownerAuth->AuthHandle)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_CreateMaintenanceArchive, &offset, txBlob,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_CreateMaintenanceArchive, &offset, TSS_TPM_TXBLOB_SIZE, txBlob,
 				    generateRandom, ownerAuth)))
 		goto done;
 
@@ -87,7 +87,7 @@ TCSP_LoadMaintenanceArchive_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = auth_mgr_check(hContext, &ownerAuth->AuthHandle)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_LoadMaintenanceArchive, &offset, txBlob, dataInSize,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_LoadMaintenanceArchive, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, dataInSize,
 				    dataInSize, dataIn, ownerAuth, NULL)))
 		return result;
 
@@ -120,7 +120,7 @@ TCSP_KillMaintenanceFeature_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = auth_mgr_check(hContext, &ownerAuth->AuthHandle)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_KillMaintenanceFeature, &offset, txBlob, ownerAuth)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_KillMaintenanceFeature, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, ownerAuth)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -151,7 +151,7 @@ TCSP_LoadManuMaintPub_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 
 	LogDebug("Entering Load Manu Maint Pub");
 
-	if ((result = tpm_rqu_build(TPM_ORD_LoadManuMaintPub, &offset, txBlob, TPM_NONCE_SIZE,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_LoadManuMaintPub, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, TPM_NONCE_SIZE,
 				    antiReplay.nonce, PubKeySize, PubKey, NULL)))
 		return result;
 
@@ -179,7 +179,7 @@ TCSP_ReadManuMaintPub_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 
 	LogDebug("Entering Read Manu Maint Pub");
 
-	if ((result = tpm_rqu_build(TPM_ORD_ReadManuMaintPub, &offset, txBlob, TPM_NONCE_SIZE,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_ReadManuMaintPub, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, TPM_NONCE_SIZE,
 				    antiReplay.nonce)))
 		return result;
 

@@ -38,7 +38,7 @@ TCSP_SetOrdinalAuditStatus_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = auth_mgr_check(hContext, &ownerAuth->AuthHandle)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_SetOrdinalAuditStatus, &offset, txBlob, ulOrdinal,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_SetOrdinalAuditStatus, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, ulOrdinal,
 				    bAuditState, ownerAuth)))
 		goto done;
 
@@ -80,7 +80,7 @@ TCSP_GetAuditDigest_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_GetAuditDigest, &offset, txBlob, startOrdinal, NULL)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_GetAuditDigest, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, startOrdinal, NULL)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -136,7 +136,7 @@ TCSP_GetAuditDigestSigned_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ensureKeyIsLoaded(hContext, keyHandle, &keySlot)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_GetAuditDigestSigned, &offset, txBlob, keySlot,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_GetAuditDigestSigned, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, keySlot,
 				    closeAudit, antiReplay.nonce, privAuth)))
 		goto done;
 

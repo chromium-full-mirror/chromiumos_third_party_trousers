@@ -58,7 +58,7 @@ TCSP_UnBind_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ensureKeyIsLoaded(hContext, keyHandle, &keySlot)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_UnBind, &offset, txBlob, keySlot, inDataSize, inData,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_UnBind, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, keySlot, inDataSize, inData,
 				    privAuth, NULL)))
 		return result;
 

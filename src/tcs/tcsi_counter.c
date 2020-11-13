@@ -37,7 +37,7 @@ TCSP_ReadCounter_Internal(TCS_CONTEXT_HANDLE hContext,
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_ReadCounter, &offset, txBlob, idCounter, NULL)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_ReadCounter, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, idCounter, NULL)))
 		return result;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -82,7 +82,7 @@ TCSP_CreateCounter_Internal(TCS_CONTEXT_HANDLE hContext,
 	if ((result = auth_mgr_check(hContext, &pOwnerAuth->AuthHandle)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_CreateCounter, &offset, txBlob, CounterAuth.authdata,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_CreateCounter, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, CounterAuth.authdata,
 				    LabelSize, pLabel, pOwnerAuth)))
 		return result;
 
@@ -120,7 +120,7 @@ TCSP_IncrementCounter_Internal(TCS_CONTEXT_HANDLE hContext,
 	if ((result = auth_mgr_check(hContext, &pCounterAuth->AuthHandle)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_IncrementCounter, &offset, txBlob, idCounter,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_IncrementCounter, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, idCounter,
 				    pCounterAuth)))
 		return result;
 
@@ -156,7 +156,7 @@ TCSP_ReleaseCounter_Internal(TCS_CONTEXT_HANDLE hContext,
 	if ((result = auth_mgr_check(hContext, &pCounterAuth->AuthHandle)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_ReleaseCounter, &offset, txBlob, idCounter,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_ReleaseCounter, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, idCounter,
 				    pCounterAuth)))
 		return result;
 
@@ -191,7 +191,7 @@ TCSP_ReleaseCounterOwner_Internal(TCS_CONTEXT_HANDLE hContext,
 	if ((result = auth_mgr_check(hContext, &pOwnerAuth->AuthHandle)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_ReleaseCounterOwner, &offset, txBlob, idCounter,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_ReleaseCounterOwner, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, idCounter,
 				    pOwnerAuth)))
 		return result;
 

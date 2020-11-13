@@ -52,7 +52,7 @@ TCSP_GetRandom_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 
 	do {
 		offset = 0;
-		if ((result = tpm_rqu_build(TPM_ORD_GetRandom, &offset, txBlob,
+		if ((result = tpm_rqu_build_checked(TPM_ORD_GetRandom, &offset, TSS_TPM_TXBLOB_SIZE, txBlob,
 					    *bytesRequested - totalReturned, NULL)))
 			break;
 
@@ -133,7 +133,7 @@ TCSP_StirRandom_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = ctx_verify_context(hContext)))
 		return result;
 
-	if ((result = tpm_rqu_build(TPM_ORD_StirRandom, &offset, txBlob, inDataSize, inDataSize,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_StirRandom, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, inDataSize, inDataSize,
 				    inData, NULL, NULL)))
 		return result;
 

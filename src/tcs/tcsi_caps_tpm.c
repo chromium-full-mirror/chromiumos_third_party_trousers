@@ -42,7 +42,7 @@ TCSP_GetCapability_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 
 	LogDebug("Entering Get Cap");
 
-	if ((result = tpm_rqu_build(TPM_ORD_GetCapability, &offset, txBlob, capArea, subCapSize,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_GetCapability, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, capArea, subCapSize,
 				    subCap, NULL)))
 		return result;
 
@@ -78,7 +78,7 @@ TCSP_GetCapabilityOwner_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	if ((result = auth_mgr_check(hContext, &pOwnerAuth->AuthHandle)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_GetCapabilityOwner, &offset, txBlob, pOwnerAuth)))
+	if ((result = tpm_rqu_build_checked(TPM_ORD_GetCapabilityOwner, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, pOwnerAuth)))
 		goto done;
 
 	if ((result = req_mgr_submit_req(txBlob)))
@@ -117,7 +117,7 @@ TCSP_SetCapability_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 		(result = auth_mgr_check(hContext, &pOwnerAuth->AuthHandle)))
 		goto done;
 
-	if ((result = tpm_rqu_build(TPM_ORD_SetCapability, &offset, txBlob, capArea, subCapSize,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_SetCapability, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, capArea, subCapSize,
 				    subCap, valueSize, value, pOwnerAuth)))
 		return result;
 

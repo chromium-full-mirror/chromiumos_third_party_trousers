@@ -128,7 +128,7 @@ TCSP_Unseal_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 		goto done;
 	}
 
-	if ((result = tpm_rqu_build(TPM_ORD_Unseal, &offset, txBlob, keySlot, SealedDataSize,
+	if ((result = tpm_rqu_build_checked(TPM_ORD_Unseal, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, keySlot, SealedDataSize,
 				    SealedData, parentAuth, dataAuth)))
 		return result;
 
