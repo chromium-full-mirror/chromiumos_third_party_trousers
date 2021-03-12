@@ -20,6 +20,7 @@
 
 #include "trousers/tss.h"
 #include "trousers_types.h"
+#include "tcs_da_reset.h"
 #include "tcs_int_literals.h"
 #include "tcs_tsp.h"
 #include "tcs_utils.h"
@@ -292,8 +293,10 @@ tcsd_thread_run(void *v)
 		UnloadBlob_UINT32(&offset, &data->comm.hdr.type_offset, data->comm.buf);
 		UnloadBlob_UINT32(&offset, &data->comm.hdr.parm_size, data->comm.buf);
 		UnloadBlob_UINT32(&offset, &data->comm.hdr.parm_offset, data->comm.buf);
-
 		result = getTCSDPacket(data);
+		handleAuthFailures();
+		clearCommandHistory();
+
 error:
 		if (result) {
 			/* something internal to the TCSD went wrong in preparing the packet
@@ -323,7 +326,6 @@ error:
 	}
 no_mem_error:
 	LogDebug("Thread exiting.");
-
 	/* Closing connection to TSP */
 	close(data->sock);
 	data->sock = -1;

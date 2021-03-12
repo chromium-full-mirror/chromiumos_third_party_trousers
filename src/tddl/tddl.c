@@ -20,6 +20,7 @@
 #include "trousers_types.h"
 #include "linux/tpm.h"
 #include "metrics/c_metrics_library.h"
+#include "tcs_da_reset.h"
 #include "tcs_utils.h"
 #include "tcslog.h"
 #include "tddl.h"
@@ -176,7 +177,12 @@ Tddli_TransmitData(BYTE * pTransmitBuf, UINT32 TransmitBufLen, BYTE * pReceiveBu
 {
 	int i, sizeResult;
 	UINT16 request_tag;
-	TSS_RESULT result;
+
+	/* The command ordinal to be sent as well as the code returned from TPM.
+	 */
+	UINT32 ordinal;
+	UINT32 result;
+
 	static CMetricsLibrary metrics_library_handle = NULL;
 	TSS_BOOL is_auth;
 
@@ -192,6 +198,7 @@ Tddli_TransmitData(BYTE * pTransmitBuf, UINT32 TransmitBufLen, BYTE * pReceiveBu
 	 */
 	request_tag = Decode_UINT16(txBuffer);
 	is_auth = (request_tag == 0xc2) || (request_tag == 0xc3);
+	ordinal = Decode_UINT32(txBuffer + 6);
 
 	if (use_in_socket) {
 		Tddli_Close();
@@ -282,6 +289,9 @@ Tddli_TransmitData(BYTE * pTransmitBuf, UINT32 TransmitBufLen, BYTE * pReceiveBu
 				"Platform.TPM.AuthErrorCode",
 				result);
 	}
+
+	recordFailedCommandHistory(ordinal, result);
+
 	return TSS_SUCCESS;
 }
 

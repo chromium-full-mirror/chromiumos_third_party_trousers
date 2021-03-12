@@ -6,6 +6,7 @@ libtcs_a_CFLAGS=-DAPPID=\"TCSD\ TCS\" -DVAR_PREFIX=\"@localstatedir@\" -DETC_PRE
 
 libtcs_a_SOURCES=log.c \
 		 tcs_caps.c \
+		 tcs_da_reset.c \
 		 tcs_req_mgr.c \
 		 tcs_context.c \
 		 tcsi_context.c \
