@@ -41,6 +41,9 @@
 #include "tcsd.h"
 #include "req_mgr.h"
 
+#include "libhwsec-foundation/tpm_error/handle_auth_failure.h"
+#include "libhwsec-foundation/tpm_error/tpm_error_data.h"
+
 struct tcsd_config tcsd_options;
 struct tpm_properties tpm_metrics;
 static volatile int hup = 0, term = 0;
@@ -475,6 +478,28 @@ void prepare_for_select(struct srv_sock_info *socks_info, int *num_fds,
 	}
 }
 
+void setupAuthFailureLogging() {
+	const char current_path[] = "/var/log/tcsd/auth_failure.log";
+	const char previous_path[] = "/var/log/tcsd/auth_failure.previous";
+	const char permanent_path[] = "/var/log/tcsd/auth_failure.permanent";
+	// Check if there is log in |current_path| and move the log to
+	// |previous_path|.
+	size_t auth_failure_hash = 0;
+	if (CheckAuthFailureHistory(current_path, previous_path,
+				    &auth_failure_hash)) {
+		LogWarn("Found auth failure in the last life cycle. (0x%x)",
+			auth_failure_hash);
+	} else {
+		char error_msg[256];
+		if (FetchAuthFailureError(error_msg, sizeof(error_msg))) {
+			LogError("error checking AuthFailure history: %s",
+				 error_msg);
+		}
+	}
+	// Set the log file path to |current_path| and |permanent_path|.
+	InitializeAuthFailureLogging(current_path, permanent_path);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -574,6 +599,8 @@ main(int argc, char **argv)
 
 	sigemptyset(&termmask);
 	sigaddset(&termmask, SIGTERM);
+
+	setupAuthFailureLogging();
 
 	do {
 		prepare_for_select(socks_info, &num_fds, &rdfd_set, &nfds);
