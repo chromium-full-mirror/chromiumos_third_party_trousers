@@ -1,4 +1,4 @@
-SUBDIRS = src man dist
+SUBDIRS = src man
 EXTRA_DIST = AUTHORS LICENSE NEWS NICETOHAVES README \
 	README.selinux TODO ChangeLog \
 	doc/LTC-TSS_LLD_08_r2.pdf \
