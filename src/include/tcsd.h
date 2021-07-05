@@ -57,7 +57,7 @@ extern char *tcsd_config_file;
 #define TSS_USER_NAME		"tss"
 #define TSS_GROUP_NAME		"tss"
 
-#define TCSD_DEFAULT_MAX_THREADS	10
+#define TCSD_DEFAULT_MAX_THREADS	16
 #define TCSD_DEFAULT_SYSTEM_PS_FILE	VAR_PREFIX "/lib/tpm/system.data"
 #define TCSD_DEFAULT_SYSTEM_PS_DIR	VAR_PREFIX "/lib/tpm"
 #define TCSD_DEFAULT_FIRMWARE_LOG_FILE	"/sys/kernel/security/tpm0/binary_bios_measurements"
