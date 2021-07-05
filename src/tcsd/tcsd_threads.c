@@ -89,7 +89,7 @@ tcsd_threads_init(void)
 TSS_RESULT
 tcsd_thread_create(int socket, char *hostname)
 {
-	UINT32 thread_num = -1;
+	UINT32 thread_num = ~0U;
 	int rc = TCS_SUCCESS;
 #ifndef TCSD_SINGLE_THREAD_DEBUG
 	THREAD_ATTR_DECLARE(tcsd_thread_attr);
@@ -166,7 +166,9 @@ out:
 	/* cleanup in case of error */
 	if (rc != TCS_SUCCESS) {
 		if (hostname != NULL) {
-			tm->thread_data[thread_num].hostname = NULL;
+			if (thread_num != ~0U) {
+				tm->thread_data[thread_num].hostname = NULL;
+			}
 			free(hostname);
 		}
 		close(socket);
