@@ -334,7 +334,7 @@ TCS_GetPcrEventLog_Internal(TCS_CONTEXT_HANDLE hContext,/* in  */
 
 	/* for each PCR index, if its externally controlled, get the total number of events
 	 * externally, else copy the events from the TCSD list. Then tack that list onto a
-	 * master list to returned. */
+	 * comprehensive list to returned. */
 	for (i = 0; i < tpm_metrics.num_pcrs; i++) {
 		if ((tcsd_options.kernel_pcrs & (1 << i)) ||
 		    (tcsd_options.firmware_pcrs & (1 << i))) {

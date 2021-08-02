@@ -94,7 +94,7 @@ main( int argc, char **argv )
 int
 main_v1_1(void)
 {
-	char *function = "key_conflict master thread";
+	char *function = "key_conflict main thread";
 	pthread_t thread_ids[KEY_CONFLICT_NUM_THREADS];
 	int result, i, j;
 	void *ret_val;
