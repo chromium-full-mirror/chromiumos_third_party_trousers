@@ -33,8 +33,14 @@ libtspi_la_SOURCES=log.c \
                    rpc/@RPC@/rpc_context.c \
                    rpc/tcs_api.c \
                    rpc/hosttable.c \
-                   rpc/@RPC@/rpc.c \
                    tsp_tcsi_param.c
+
+if FUZZER
+libtspi_la_SOURCES+=rpc/@RPC@/fuzzed_rpc.c
+libtspi_la_LIBADD+=-lhwsec-foundation
+else
+libtspi_la_SOURCES+=rpc/@RPC@/rpc.c
+endif
 
 if TSS_BUILD_ASYM_CRYPTO
 libtspi_la_SOURCES+=tsp_asym.c

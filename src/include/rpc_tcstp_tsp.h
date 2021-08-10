@@ -20,11 +20,15 @@ int setData(TCSD_PACKET_TYPE,int,void *,int,struct tcsd_comm_data *);
 UINT32 getData(TCSD_PACKET_TYPE,int,void *,int,struct tcsd_comm_data *);
 void initData(struct tcsd_comm_data *, int);
 TSS_RESULT sendTCSDPacket(struct host_table_entry *);
+#ifndef FUZZED_TPM
 TSS_RESULT send_init(struct host_table_entry *);
 TSS_RESULT tcs_sendit(struct host_table_entry *);
+#endif
 
+#ifndef FUZZED_TPM
 /* Underlying socket-related calls */
 TSS_RESULT get_socket(struct host_table_entry *hte, int *sd);
+#endif
 
 /* Context commands always included */
 TSS_RESULT RPC_OpenContext_TP(struct host_table_entry *, UINT32 *, TCS_CONTEXT_HANDLE *);
