@@ -114,7 +114,7 @@ Tspi_TPM_Delegate_CreateDelegation(TSS_HOBJECT    hObject,	/* in */
 				   UINT32         ulFlags,	/* in */
 				   TSS_HPCRS      hPcrs,	/* in */
 				   TSS_HDELFAMILY hFamily,	/* in */
-				   TSS_HPOLICY    hDelegation)	/* in, out */
+				   TSS_HPOLICY    hDelegation)	/* in */
 {
 	TSS_RESULT result;
 
@@ -223,7 +223,7 @@ done:
 
 TSS_RESULT
 Tspi_TPM_Delegate_UpdateVerificationCount(TSS_HTPM    hTpm,		/* in */
-					  TSS_HPOLICY hDelegation)	/* in, out */
+					  TSS_HPOLICY hDelegation)	/* in */
 {
 	TSS_HCONTEXT hContext;
 	TSS_HPOLICY hPolicy;
@@ -315,7 +315,7 @@ done:
 }
 
 TSS_RESULT
-Tspi_TPM_Delegate_VerifyDelegation(TSS_HPOLICY hDelegation)	/* in, out */
+Tspi_TPM_Delegate_VerifyDelegation(TSS_HPOLICY hDelegation)	/* in */
 {
 	TSS_HCONTEXT hContext;
 	UINT32 delegateSize;

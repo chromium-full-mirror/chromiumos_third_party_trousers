@@ -621,13 +621,13 @@ TSPICALL Tspi_TPM_Delegate_CreateDelegation
     UINT32              ulFlags,                       // in
     TSS_HPCRS           hPcr,                          // in, may be NULL
     TSS_HDELFAMILY      hFamily,                       // in
-    TSS_HPOLICY         hDelegation                    // in, out
+    TSS_HPOLICY         hDelegation                    // in
 );
 
 TSPICALL Tspi_TPM_Delegate_CacheOwnerDelegation
 (
     TSS_HTPM            hTPM,                          // in, must not be NULL
-    TSS_HPOLICY         hDelegation,                   // in, out
+    TSS_HPOLICY         hDelegation,                   // in
     UINT32              ulIndex,                       // in
     UINT32              ulFlags                        // in
 );
@@ -635,12 +635,12 @@ TSPICALL Tspi_TPM_Delegate_CacheOwnerDelegation
 TSPICALL Tspi_TPM_Delegate_UpdateVerificationCount
 (
     TSS_HTPM            hTPM,                          // in
-    TSS_HPOLICY         hDelegation                    // in, out
+    TSS_HPOLICY         hDelegation                    // in
 );
 
 TSPICALL Tspi_TPM_Delegate_VerifyDelegation
 (
-    TSS_HPOLICY         hDelegation                    // in, out
+    TSS_HPOLICY         hDelegation                    // in
 );
 
 TSPICALL Tspi_TPM_Delegate_ReadTables
