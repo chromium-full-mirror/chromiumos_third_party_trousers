@@ -336,7 +336,7 @@ Tspi_TPM_GetCapability(TSS_HTPM hTPM,			/* in */
 		if (*pulRespDataLength == sizeof(UINT32))
 			*(UINT32 *)(*prgbRespData) = endian32(*(UINT32 *)(*prgbRespData));
 		else if (*pulRespDataLength == sizeof(UINT16))
-			*(UINT32 *)(*prgbRespData) = endian16(*(UINT32 *)(*prgbRespData));
+			*(UINT16 *)(*prgbRespData) = endian16(*(UINT16 *)(*prgbRespData));
 	}
 
 	if ((result = __tspi_add_mem_entry(tspContext, *prgbRespData))) {
