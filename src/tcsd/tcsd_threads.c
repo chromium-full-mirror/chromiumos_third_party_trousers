@@ -154,6 +154,8 @@ tcsd_thread_create(int socket, char *hostname)
 				 (void *)(&(tm->thread_data[thread_num]))))) {
 		LogError("Thread create failed: %d", rc);
 		rc = TCSERR(TSS_E_INTERNAL_ERROR);
+		free(tm->thread_data[thread_num].thread_id);
+		tm->thread_data[thread_num].thread_id = THREAD_NULL;
 		goto out_unlock;
 	}
 
