@@ -197,7 +197,7 @@ Tspi_TPM_GetPubEndorsementKey(TSS_HTPM hTPM,			/* in */
 			 */
 			offset = 0;
 			__tspi_memset(&pubKey, 0, sizeof(TCPA_PUBKEY));
-			if ((result = Trspi_UnloadBlob_PUBKEY(&offset, pubEK, &pubKey)))
+			if ((result = Trspi_UnloadBlob_PUBKEY_s(&offset, pubEK, pubEKSize, &pubKey)))
 				goto done;
 
 			result = Trspi_HashInit(&hashCtx, TSS_HASH_SHA1);
