@@ -65,6 +65,19 @@ Trspi_UnloadBlob_DIGEST(UINT64 *offset, BYTE *blob, TPM_DIGEST *digest)
 	Trspi_UnloadBlob(offset, TPM_SHA1_160_HASH_LEN, blob, digest->digest);
 }
 
+TSS_RESULT
+Trspi_UnloadBlob_DIGEST_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_DIGEST *digest)
+{
+	if (!digest) {
+		(*offset) += TPM_SHA1_160_HASH_LEN;
+		if (*offset > capacity)
+			return TSPERR(TSS_E_BAD_PARAMETER);
+		return TSS_SUCCESS;
+	}
+
+	return Trspi_UnloadBlob_s(offset, TPM_SHA1_160_HASH_LEN, blob, capacity, digest->digest);
+}
+
 void
 Trspi_LoadBlob_PUBKEY(UINT64 *offset, BYTE *blob, TCPA_PUBKEY *pubKey)
 {
@@ -549,6 +562,36 @@ Trspi_UnloadBlob_PCR_INFO_SHORT(UINT64 *offset, BYTE *blob, TPM_PCR_INFO_SHORT *
 	return TSS_SUCCESS;
 }
 
+TSS_RESULT
+Trspi_UnloadBlob_PCR_INFO_SHORT_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_PCR_INFO_SHORT *pcr)
+{
+	TSS_RESULT result;
+
+	if (!pcr) {
+		if ((result = Trspi_UnloadBlob_PCR_SELECTION_s(offset, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_BYTE_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_DIGEST_s(offset, blob, capacity, NULL)))
+			return result;
+
+		return TSS_SUCCESS;
+	}
+
+	if ((result = Trspi_UnloadBlob_PCR_SELECTION_s(offset, blob, capacity, &pcr->pcrSelection)))
+		return result;
+	if ((result = Trspi_UnloadBlob_BYTE_s(offset, &pcr->localityAtRelease, blob, capacity))) {
+		free(pcr->pcrSelection.pcrSelect);
+		return result;
+	}
+	if ((result = Trspi_UnloadBlob_DIGEST_s(offset, blob, capacity, &pcr->digestAtRelease))) {
+		free(pcr->pcrSelection.pcrSelect);
+		return result;
+	}
+
+	return TSS_SUCCESS;
+}
+
 void
 Trspi_LoadBlob_PCR_INFO_SHORT(UINT64 *offset, BYTE *blob, TPM_PCR_INFO_SHORT *pcr)
 {
@@ -579,6 +622,46 @@ Trspi_UnloadBlob_PCR_SELECTION(UINT64 *offset, BYTE *blob, TCPA_PCR_SELECTION *p
 		}
 
 		Trspi_UnloadBlob(offset, pcr->sizeOfSelect, blob, pcr->pcrSelect);
+	} else {
+		pcr->pcrSelect = NULL;
+	}
+
+	return TSS_SUCCESS;
+}
+
+TSS_RESULT
+Trspi_UnloadBlob_PCR_SELECTION_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_PCR_SELECTION *pcr)
+{
+	TSS_RESULT result;
+
+	if (!pcr) {
+		UINT16 sizeOfSelect;
+
+		if ((result = Trspi_UnloadBlob_UINT16_s(offset, &sizeOfSelect, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_s(offset, sizeOfSelect, blob, capacity, NULL)))
+			return result;
+
+		return TSS_SUCCESS;
+	}
+
+	if ((result = Trspi_UnloadBlob_UINT16_s(offset, &pcr->sizeOfSelect, blob, capacity)))
+		return result;
+
+	if (pcr->sizeOfSelect > 0) {
+		if (*offset + pcr->sizeOfSelect > capacity)
+			return TSPERR(TSS_E_BAD_PARAMETER);
+
+		pcr->pcrSelect = calloc(1, pcr->sizeOfSelect);
+		if (pcr->pcrSelect == NULL) {
+			LogError("malloc of %u bytes failed.", pcr->sizeOfSelect);
+			return TSPERR(TSS_E_OUTOFMEMORY);
+		}
+
+		if ((result = Trspi_UnloadBlob_s(offset, pcr->sizeOfSelect, blob, capacity, pcr->pcrSelect))) {
+			free(pcr->pcrSelect);
+			return result;
+		}
 	} else {
 		pcr->pcrSelect = NULL;
 	}
@@ -3077,6 +3160,16 @@ Trspi_UnloadBlob_NV_INDEX(UINT64 *offset, BYTE *blob, TPM_NV_INDEX *v)
 }
 
 TSS_RESULT
+Trspi_UnloadBlob_NV_INDEX_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_NV_INDEX *v)
+{
+	if (!v) {
+		return Trspi_UnloadBlob_UINT32_s(offset, NULL, blob, capacity);
+	}
+
+	return Trspi_UnloadBlob_UINT32_s(offset, v, blob, capacity);
+}
+
+TSS_RESULT
 Trspi_UnloadBlob_NV_ATTRIBUTES(UINT64 *offset, BYTE *blob, TPM_NV_ATTRIBUTES *v)
 {
 	if (!v) {
@@ -3088,6 +3181,28 @@ Trspi_UnloadBlob_NV_ATTRIBUTES(UINT64 *offset, BYTE *blob, TPM_NV_ATTRIBUTES *v)
 
 	Trspi_UnloadBlob_UINT16(offset, &v->tag, blob);
 	Trspi_UnloadBlob_UINT32(offset, &v->attributes, blob);
+
+	return TSS_SUCCESS;
+}
+
+TSS_RESULT
+Trspi_UnloadBlob_NV_ATTRIBUTES_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_NV_ATTRIBUTES *v)
+{
+	TSS_RESULT result;
+
+	if (!v) {
+		if ((result = Trspi_UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, NULL, blob, capacity)))
+			return result;
+
+		return TSS_SUCCESS;
+	}
+
+	if ((result = Trspi_UnloadBlob_UINT16_s(offset, &v->tag, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &v->attributes, blob, capacity)))
+		return result;
 
 	return TSS_SUCCESS;
 }
@@ -3118,6 +3233,73 @@ Trspi_UnloadBlob_NV_DATA_PUBLIC(UINT64 *offset, BYTE *blob, TPM_NV_DATA_PUBLIC *
 	Trspi_UnloadBlob_BYTE(offset, &v->bWriteSTClear, blob);
 	Trspi_UnloadBlob_BYTE(offset, &v->bWriteDefine, blob);
 	Trspi_UnloadBlob_UINT32(offset, &v->dataSize, blob);
+
+	return TSS_SUCCESS;
+}
+
+TSS_RESULT
+Trspi_UnloadBlob_NV_DATA_PUBLIC_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_NV_DATA_PUBLIC *v)
+{
+	TSS_RESULT result;
+
+	if (!v) {
+		if ((result = Trspi_UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_NV_INDEX_s(offset, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_PCR_INFO_SHORT_s(offset, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_PCR_INFO_SHORT_s(offset, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_NV_ATTRIBUTES_s(offset, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_BYTE_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_BYTE_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_BYTE_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, NULL, blob, capacity)))
+			return result;
+
+		return TSS_SUCCESS;
+	}
+
+	if ((result = Trspi_UnloadBlob_UINT16_s(offset, &v->tag, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_NV_INDEX_s(offset, blob, capacity, &v->nvIndex)))
+		return result;
+	if ((result = Trspi_UnloadBlob_PCR_INFO_SHORT_s(offset, blob, capacity, &v->pcrInfoRead)))
+		return result;
+	if ((result = Trspi_UnloadBlob_PCR_INFO_SHORT_s(offset, blob, capacity, &v->pcrInfoWrite))) {
+		free(v->pcrInfoRead.pcrSelection.pcrSelect);
+		return result;
+	}
+	if ((result = Trspi_UnloadBlob_NV_ATTRIBUTES_s(offset, blob, capacity, &v->permission))) {
+		free(v->pcrInfoRead.pcrSelection.pcrSelect);
+		free(v->pcrInfoWrite.pcrSelection.pcrSelect);
+		return result;
+	}
+	if ((result = Trspi_UnloadBlob_BYTE_s(offset, &v->bReadSTClear, blob, capacity))) {
+		free(v->pcrInfoRead.pcrSelection.pcrSelect);
+		free(v->pcrInfoWrite.pcrSelection.pcrSelect);
+		return result;
+	}
+	if ((result = Trspi_UnloadBlob_BYTE_s(offset, &v->bWriteSTClear, blob, capacity))) {
+		free(v->pcrInfoRead.pcrSelection.pcrSelect);
+		free(v->pcrInfoWrite.pcrSelection.pcrSelect);
+		return result;
+	}
+	if ((result = Trspi_UnloadBlob_BYTE_s(offset, &v->bWriteDefine, blob, capacity))) {
+		free(v->pcrInfoRead.pcrSelection.pcrSelect);
+		free(v->pcrInfoWrite.pcrSelection.pcrSelect);
+		return result;
+	}
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &v->dataSize, blob, capacity))) {
+		free(v->pcrInfoRead.pcrSelection.pcrSelect);
+		free(v->pcrInfoWrite.pcrSelection.pcrSelect);
+		return result;
+	}
 
 	return TSS_SUCCESS;
 }
