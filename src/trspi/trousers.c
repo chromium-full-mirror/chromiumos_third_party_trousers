@@ -1085,6 +1085,36 @@ Trspi_UnloadBlob_VERSION(UINT64 *offset, BYTE *blob, TCPA_VERSION *out)
 }
 
 TSS_RESULT
+Trspi_UnloadBlob_VERSION_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_VERSION *out)
+{
+	TSS_RESULT result;
+
+	if (!out) {
+		if ((result = Trspi_UnloadBlob_BYTE_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_BYTE_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_BYTE_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_BYTE_s(offset, NULL, blob, capacity)))
+			return result;
+
+		return TSS_SUCCESS;
+	}
+
+	if ((result = Trspi_UnloadBlob_BYTE_s(offset, &out->major, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_BYTE_s(offset, &out->minor, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_BYTE_s(offset, &out->revMajor, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_BYTE_s(offset, &out->revMinor, blob, capacity)))
+		return result;
+
+	return TSS_SUCCESS;
+}
+
+TSS_RESULT
 Trspi_UnloadBlob_KM_KEYINFO(UINT64 *offset, BYTE *blob, TSS_KM_KEYINFO *info)
 {
 	if (!info) {
@@ -3146,6 +3176,64 @@ Trspi_UnloadBlob_CAP_VERSION_INFO(UINT64 *offset, BYTE *blob, TPM_CAP_VERSION_IN
 }
 
 TSS_RESULT
+Trspi_UnloadBlob_CAP_VERSION_INFO_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_CAP_VERSION_INFO *v)
+{
+	TSS_RESULT result;
+
+	if (!v) {
+		UINT16 vendorSpecificSize;
+
+		if ((result = Trspi_UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_VERSION_s(offset, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_BYTE_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_s(offset, 4, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT16_s(offset, &vendorSpecificSize, blob, capacity)))
+			return result;
+
+		(*offset) += vendorSpecificSize;
+		if (*offset > capacity)
+			return TSPERR(TSS_E_BAD_PARAMETER);
+
+		return TSS_SUCCESS;
+	}
+
+	if ((result = Trspi_UnloadBlob_UINT16_s(offset, &v->tag, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_VERSION_s(offset, blob, capacity, (TCPA_VERSION *)&v->version)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT16_s(offset, &v->specLevel, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_BYTE_s(offset, &v->errataRev, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_s(offset, sizeof(v->tpmVendorID), blob, capacity, v->tpmVendorID)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT16_s(offset, &v->vendorSpecificSize, blob, capacity)))
+		return result;
+
+	if (v->vendorSpecificSize > 0) {
+		if ((v->vendorSpecific = malloc(v->vendorSpecificSize)) == NULL) {
+			LogError("malloc of %u bytes failed.", v->vendorSpecificSize);
+			return TSPERR(TSS_E_OUTOFMEMORY);
+		}
+
+		if ((result = Trspi_UnloadBlob_s(offset, v->vendorSpecificSize, blob, capacity, v->vendorSpecific))) {
+			free(v->vendorSpecific);
+			return result;
+		}
+	} else {
+		v->vendorSpecific = NULL;
+	}
+
+	return TSS_SUCCESS;
+}
+
+TSS_RESULT
 Trspi_UnloadBlob_NV_INDEX(UINT64 *offset, BYTE *blob, TPM_NV_INDEX *v)
 {
 	if (!v) {
@@ -3335,6 +3423,70 @@ Trspi_UnloadBlob_DA_INFO(UINT64 *offset, BYTE *blob, TPM_DA_INFO *info) {
 		}
 
 		Trspi_UnloadBlob(offset, info->vendorDataSize, blob, info->vendorData);
+	} else {
+		info->vendorData = NULL;
+	}
+
+	return TSS_SUCCESS;
+}
+
+TSS_RESULT
+Trspi_UnloadBlob_DA_INFO_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_DA_INFO *info) {
+	TSS_RESULT result;
+
+	if (!info) {
+		UINT32 vendorDataSize = 0;
+
+		if ((result = Trspi_UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_BYTE_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, &vendorDataSize, blob, capacity)))
+			return result;
+
+		(*offset) += vendorDataSize;
+		if (*offset > capacity)
+			return TSPERR(TSS_E_BAD_PARAMETER);
+
+		return TSS_SUCCESS;
+	}
+
+	if ((result = Trspi_UnloadBlob_UINT16_s(offset, &info->tag, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_BYTE_s(offset, &info->state, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT16_s(offset, &info->currentCount, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT16_s(offset, &info->thresholdCount, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT16_s(offset, &info->actionAtThreshold.tag, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &info->actionAtThreshold.actions, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &info->actionDependValue, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &info->vendorDataSize, blob, capacity)))
+		return result;
+	if (info->vendorDataSize > 0) {
+		if ((info->vendorData = malloc(info->vendorDataSize)) == NULL) {
+			LogError("malloc of %u bytes failed.", info->vendorDataSize);
+			return TSPERR(TSS_E_OUTOFMEMORY);
+		}
+
+		if ((result = Trspi_UnloadBlob_s(offset, info->vendorDataSize, blob, capacity, info->vendorData))) {
+			free(info->vendorData);
+			return result;
+		}
 	} else {
 		info->vendorData = NULL;
 	}

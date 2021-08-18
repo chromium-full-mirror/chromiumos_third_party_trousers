@@ -88,6 +88,7 @@ TSS_RESULT Trspi_UnloadBlob_TSS_PCR_INFO_SHORT(UINT64 *offset, BYTE *blob, TSS_P
 TSS_RESULT Trspi_UnloadBlob_TSS_DELEGATION_TABLE_ENTRY(UINT64 *offset, BYTE *blob, TSS_DELEGATION_TABLE_ENTRY *entry);
 TSS_RESULT Trspi_UnloadBlob_TSS_PLATFORM_CLASS(UINT64 *offset, BYTE *blob, TSS_PLATFORM_CLASS *platClass);
 TSS_RESULT Trspi_UnloadBlob_CAP_VERSION_INFO(UINT64 *offset, BYTE *blob, TPM_CAP_VERSION_INFO *v);
+TSS_RESULT Trspi_UnloadBlob_CAP_VERSION_INFO_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_CAP_VERSION_INFO *v);
 TSS_RESULT Trspi_UnloadBlob_NV_INDEX(UINT64 *offset, BYTE *blob, TPM_NV_INDEX *v);
 TSS_RESULT Trspi_UnloadBlob_NV_INDEX_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_NV_INDEX *v);
 TSS_RESULT Trspi_UnloadBlob_NV_ATTRIBUTES(UINT64 *offset, BYTE *blob, TPM_NV_ATTRIBUTES *v);
@@ -95,6 +96,7 @@ TSS_RESULT Trspi_UnloadBlob_NV_ATTRIBUTES_s(UINT64 *offset, BYTE *blob, UINT64 c
 TSS_RESULT Trspi_UnloadBlob_NV_DATA_PUBLIC(UINT64 *offset, BYTE *blob, TPM_NV_DATA_PUBLIC *v);
 TSS_RESULT Trspi_UnloadBlob_NV_DATA_PUBLIC_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_NV_DATA_PUBLIC *v);
 TSS_RESULT Trspi_UnloadBlob_DA_INFO(UINT64 *offset, BYTE *blob, TPM_DA_INFO *info);
+TSS_RESULT Trspi_UnloadBlob_DA_INFO_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_DA_INFO *info);
 
 /* Blob loading functions */
 void Trspi_LoadBlob_BOUND_DATA(UINT64 *, TCPA_BOUND_DATA, UINT32, BYTE *);
