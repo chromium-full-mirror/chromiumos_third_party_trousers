@@ -11,6 +11,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stddef.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -932,6 +933,85 @@ Trspi_UnloadBlob_KEY12(UINT64 *offset, BYTE *blob, TPM_KEY12 *key)
 }
 
 TSS_RESULT
+Trspi_UnloadBlob_KEY12_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_KEY12 *key)
+{
+	TSS_RESULT result;
+
+	if(offsetof(TSS_KEY, algorithmParms) > capacity)
+		return TSPERR(TSS_E_BAD_PARAMETER);
+
+	if (!key) {
+		UINT32 PCRInfoSize, encSize;
+		Trspi_UnloadBlob_UINT16(offset, NULL, blob);
+		Trspi_UnloadBlob_UINT16(offset, NULL, blob);
+		Trspi_UnloadBlob_UINT16(offset, NULL, blob);
+		Trspi_UnloadBlob_KEY_FLAGS(offset, blob, NULL);
+		Trspi_UnloadBlob_BYTE(offset, NULL, blob);
+		if ((result = Trspi_UnloadBlob_KEY_PARMS_s(offset, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, &PCRInfoSize, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_s(offset, PCRInfoSize, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_STORE_PUBKEY_s(offset, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, &encSize, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_s(offset, encSize, blob, capacity, NULL)))
+			return result;
+
+		return TSS_SUCCESS;
+	}
+
+	Trspi_UnloadBlob_UINT16(offset, &key->tag, blob);
+	Trspi_UnloadBlob_UINT16(offset, &key->fill, blob);
+	Trspi_UnloadBlob_UINT16(offset, &key->keyUsage, blob);
+	Trspi_UnloadBlob_KEY_FLAGS(offset, blob, &key->keyFlags);
+	Trspi_UnloadBlob_BYTE(offset, &key->authDataUsage, blob);
+	if ((result = Trspi_UnloadBlob_KEY_PARMS_s(offset, (BYTE *) blob, capacity, &key->algorithmParms)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &key->PCRInfoSize, blob, capacity)))
+		return result;
+	if (key->PCRInfoSize > 0) {
+		key->PCRInfo = malloc(key->PCRInfoSize);
+		if (key->PCRInfo == NULL) {
+			LogError("malloc of %d bytes failed.", key->PCRInfoSize);
+			return TSPERR(TSS_E_OUTOFMEMORY);
+		}
+		if ((result = Trspi_UnloadBlob_s(offset, key->PCRInfoSize, blob, capacity, key->PCRInfo)))
+			goto error0;
+	} else {
+		key->PCRInfo = NULL;
+	}
+
+	if ((result = Trspi_UnloadBlob_STORE_PUBKEY_s(offset, blob, capacity, &key->pubKey)))
+		goto error0;
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &key->encSize, blob, capacity)))
+		goto error0;
+	if (key->encSize > 0) {
+		key->encData = malloc(key->encSize);
+		if (key->encData == NULL) {
+			LogError("malloc of %d bytes failed.", key->encSize);
+			result = TSPERR(TSS_E_OUTOFMEMORY);
+			goto error0;
+		}
+		if ((result = Trspi_UnloadBlob_s(offset, key->encSize, blob, capacity, key->encData)))
+			goto error1;
+	} else {
+		key->encData = NULL;
+	}
+	return TSS_SUCCESS;
+
+error1:
+	if(key->encData != NULL)
+		free(key->encData);
+error0:
+	if(key->PCRInfo != NULL)
+		free(key->PCRInfo);
+	return result;
+}
+
+TSS_RESULT
 Trspi_UnloadBlob_KEY(UINT64 *offset, BYTE *blob, TCPA_KEY *key)
 {
 	TSS_RESULT result;
@@ -987,6 +1067,84 @@ Trspi_UnloadBlob_KEY(UINT64 *offset, BYTE *blob, TCPA_KEY *key)
 		key->encData = NULL;
 	}
 
+	return result;
+}
+
+TSS_RESULT
+Trspi_UnloadBlob_KEY_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_KEY *key)
+{
+	TSS_RESULT result;
+
+	if(offsetof(TSS_KEY, algorithmParms) > capacity)
+		return TSPERR(TSS_E_BAD_PARAMETER);
+
+	if (!key) {
+		UINT32 PCRInfoSize, encSize;
+
+		Trspi_UnloadBlob_TCPA_VERSION(offset, blob, NULL);
+		Trspi_UnloadBlob_UINT16(offset, NULL, blob);
+		Trspi_UnloadBlob_KEY_FLAGS(offset, blob, NULL);
+		Trspi_UnloadBlob_BYTE(offset, NULL, blob);
+		if ((result = Trspi_UnloadBlob_KEY_PARMS_s(offset, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, &PCRInfoSize, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_s(offset, PCRInfoSize, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_STORE_PUBKEY_s(offset, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, &encSize, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_s(offset, encSize, blob, capacity, NULL)))
+			return result;
+
+		return TSS_SUCCESS;
+	}
+
+	Trspi_UnloadBlob_TCPA_VERSION(offset, blob, &key->ver);
+	Trspi_UnloadBlob_UINT16(offset, &key->keyUsage, blob);
+	Trspi_UnloadBlob_KEY_FLAGS(offset, blob, &key->keyFlags);
+	Trspi_UnloadBlob_BYTE(offset, &key->authDataUsage, blob);
+	if ((result = Trspi_UnloadBlob_KEY_PARMS_s(offset, (BYTE *) blob, capacity, &key->algorithmParms)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &key->PCRInfoSize, blob, capacity)))
+		return result;
+	if (key->PCRInfoSize > 0) {
+		key->PCRInfo = malloc(key->PCRInfoSize);
+		if (key->PCRInfo == NULL) {
+			LogError("malloc of %d bytes failed.", key->PCRInfoSize);
+			return TSPERR(TSS_E_OUTOFMEMORY);
+		}
+		if ((result = Trspi_UnloadBlob_s(offset, key->PCRInfoSize, blob, capacity, key->PCRInfo)))
+			goto error0;
+	} else {
+		key->PCRInfo = NULL;
+	}
+
+	if ((result = Trspi_UnloadBlob_STORE_PUBKEY_s(offset, blob, capacity, &key->pubKey)))
+		goto error0;
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &key->encSize, blob, capacity)))
+		goto error0;
+	if (key->encSize > 0) {
+		key->encData = malloc(key->encSize);
+		if (key->encData == NULL) {
+			LogError("malloc of %d bytes failed.", key->encSize);
+			result = TSPERR(TSS_E_OUTOFMEMORY);
+			goto error0;
+		}
+		if ((result = Trspi_UnloadBlob_s(offset, key->encSize, blob, capacity, key->encData)))
+			goto error1;
+	} else {
+		key->encData = NULL;
+	}
+	return TSS_SUCCESS;
+
+error1:
+	if(key->encData != NULL)
+		free(key->encData);
+error0:
+	if(key->PCRInfo != NULL)
+		free(key->PCRInfo);
 	return result;
 }
 

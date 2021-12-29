@@ -61,7 +61,9 @@ TSS_RESULT Trspi_UnloadBlob_DIGEST_s(UINT64 *offset, BYTE *blob, UINT64 capacity
 TSS_RESULT Trspi_UnloadBlob_PUBKEY(UINT64 *offset, BYTE *blob, TCPA_PUBKEY *pubKey);
 TSS_RESULT Trspi_UnloadBlob_PUBKEY_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_PUBKEY *pubKey);
 TSS_RESULT Trspi_UnloadBlob_KEY(UINT64 *offset, BYTE *blob, TCPA_KEY *key);
+TSS_RESULT Trspi_UnloadBlob_KEY_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_KEY *key);
 TSS_RESULT Trspi_UnloadBlob_KEY12(UINT64 *offset, BYTE *blob, TPM_KEY12 *key);
+TSS_RESULT Trspi_UnloadBlob_KEY12_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_KEY12 *key);
 TSS_RESULT Trspi_UnloadBlob_MIGRATIONKEYAUTH(UINT64 *offset, BYTE *blob, TPM_MIGRATIONKEYAUTH *migAuth);
 TSS_RESULT Trspi_UnloadBlob_PCR_EVENT(UINT64 *offset, BYTE *blob, TSS_PCR_EVENT *event);
 TSS_RESULT Trspi_UnloadBlob_KM_KEYINFO(UINT64 *offset, BYTE *blob, TSS_KM_KEYINFO *info);

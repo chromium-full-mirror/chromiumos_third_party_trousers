@@ -67,6 +67,23 @@ UnloadBlob_TSS_KEY(UINT64 *offset, BYTE *blob, TSS_KEY *key)
 }
 
 TSS_RESULT
+UnloadBlob_TSS_KEY_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TSS_KEY *key)
+{
+	UINT16 tag;
+	UINT64 keyOffset = *offset;
+	TSS_RESULT result;
+
+	if ((result = Trspi_UnloadBlob_UINT16_s(&keyOffset, &tag, blob, capacity)))
+		return result;
+	if (tag == TPM_TAG_KEY12)
+		result = Trspi_UnloadBlob_KEY12_s(offset, blob, capacity, (TPM_KEY12 *)key);
+	else
+		result = Trspi_UnloadBlob_KEY_s(offset, blob, capacity, (TCPA_KEY *)key);
+
+	return result;
+}
+
+TSS_RESULT
 Hash_TSS_KEY(Trspi_HashCtx *c, TSS_KEY *key)
 {
 	TSS_RESULT result;

@@ -485,7 +485,7 @@ Tspi_Context_LoadKeyByBlob(TSS_HCONTEXT tspContext,	/* in */
 		return result;
 
 	offset = 0;
-	if ((result = UnloadBlob_TSS_KEY(&offset, rgbBlobData, &keyContainer)))
+	if ((result = UnloadBlob_TSS_KEY_s(&offset, rgbBlobData, ulBlobLength, &keyContainer)))
 		return result;
 	realKeyBlobSize = offset;
 	pubLen = keyContainer.pubKey.keyLength;
