@@ -25,7 +25,6 @@
 #include <vector>
 
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/notreached.h>
 
 namespace trousers {
@@ -81,6 +80,9 @@ class ScopedTssType {
   explicit ScopedTssType(TSS_HCONTEXT c = 0, TssType t = 0) :
      context_(c),
      type_(t) {}
+  ScopedTssType(const ScopedTssType&) = delete;
+  ScopedTssType& operator=(const ScopedTssType&) = delete;
+
   virtual ~ScopedTssType() {
     release_(context_, type_);
   }
@@ -117,8 +119,6 @@ class ScopedTssType {
   ReleaseProc release_;
   TSS_HCONTEXT context_;
   TssType type_;
-
-  DISALLOW_COPY_AND_ASSIGN(ScopedTssType);
 };
 
 // Wrap ScopedTssObject to allow implicit conversion only when safe.
