@@ -80,8 +80,24 @@ class ScopedTssType {
   explicit ScopedTssType(TSS_HCONTEXT c = 0, TssType t = 0) :
      context_(c),
      type_(t) {}
-  ScopedTssType(const ScopedTssType&) = delete;
-  ScopedTssType& operator=(const ScopedTssType&) = delete;
+
+  ScopedTssType(const ScopedTssType &) = delete;
+  ScopedTssType &operator=(const ScopedTssType &) = delete;
+
+  explicit ScopedTssType(ScopedTssType &&other)
+      : context_(other.context_), type_(other.type_) {
+    other.context_ = 0;
+    other.type_ = 0;
+  }
+
+  ScopedTssType &operator=(ScopedTssType &&other) {
+    release_(context_, type_);
+    context_ = other.context_;
+    type_ = other.type_;
+    other.context_ = 0;
+    other.type_ = 0;
+    return *this;
+  }
 
   virtual ~ScopedTssType() {
     release_(context_, type_);
