@@ -81,9 +81,13 @@ TSS_RESULT Trspi_UnloadBlob_CERTIFY_INFO(UINT64 *offset, BYTE* blob, TPM_CERTIFY
 void       Trspi_UnloadBlob_TPM_FAMILY_LABEL(UINT64 *offset, BYTE *blob, TPM_FAMILY_LABEL *label);
 void       Trspi_UnloadBlob_TPM_FAMILY_TABLE_ENTRY(UINT64 *offset, BYTE *blob, TPM_FAMILY_TABLE_ENTRY *entry);
 void       Trspi_UnloadBlob_TPM_DELEGATE_LABEL(UINT64 *offset, BYTE *blob, TPM_DELEGATE_LABEL *label);
+TSS_RESULT Trspi_UnloadBlob_TPM_DELEGATE_LABEL_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_DELEGATE_LABEL *label);
 void       Trspi_UnloadBlob_TPM_DELEGATIONS(UINT64 *offset, BYTE *blob, TPM_DELEGATIONS *delegations);
+TSS_RESULT Trspi_UnloadBlob_TPM_DELEGATIONS_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_DELEGATIONS *delegations);
 TSS_RESULT Trspi_UnloadBlob_TPM_DELEGATE_PUBLIC(UINT64 *offset, BYTE *blob, TPM_DELEGATE_PUBLIC *pub);
+TSS_RESULT Trspi_UnloadBlob_TPM_DELEGATE_PUBLIC_s(UINT64 *offset, BYTE *blob,  UINT64 capacity, TPM_DELEGATE_PUBLIC *pub);
 TSS_RESULT Trspi_UnloadBlob_TPM_DELEGATE_OWNER_BLOB(UINT64 *offset, BYTE *blob, TPM_DELEGATE_OWNER_BLOB *owner);
+TSS_RESULT Trspi_UnloadBlob_TPM_DELEGATE_OWNER_BLOB_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_DELEGATE_OWNER_BLOB *owner);
 TSS_RESULT Trspi_UnloadBlob_TPM_DELEGATE_KEY_BLOB(UINT64 *offset, BYTE *blob, TPM_DELEGATE_KEY_BLOB *key);
 void       Trspi_UnloadBlob_TSS_FAMILY_TABLE_ENTRY(UINT64 *offset, BYTE *blob, TSS_FAMILY_TABLE_ENTRY *entry);
 TSS_RESULT Trspi_UnloadBlob_TSS_PCR_INFO_SHORT(UINT64 *offset, BYTE *blob, TSS_PCR_INFO_SHORT *pcr);

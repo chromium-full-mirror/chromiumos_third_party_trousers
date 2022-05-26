@@ -2842,6 +2842,17 @@ Trspi_UnloadBlob_TPM_DELEGATE_LABEL(UINT64 *offset, BYTE *blob, TPM_DELEGATE_LAB
 	Trspi_UnloadBlob_BYTE(offset, &label->label, blob);
 }
 
+TSS_RESULT
+Trspi_UnloadBlob_TPM_DELEGATE_LABEL_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_DELEGATE_LABEL *label)
+{
+	BYTE *internal_label = NULL;
+
+	if (label)
+		internal_label = &label->label;
+
+	return Trspi_UnloadBlob_BYTE_s(offset, internal_label, blob, capacity);
+}
+
 void
 Trspi_LoadBlob_TPM_DELEGATE_LABEL(UINT64 *offset, BYTE *blob, TPM_DELEGATE_LABEL *label)
 {
@@ -2864,6 +2875,36 @@ Trspi_UnloadBlob_TPM_DELEGATIONS(UINT64 *offset, BYTE *blob, TPM_DELEGATIONS *de
 	Trspi_UnloadBlob_UINT32(offset, &delegations->delegateType, blob);
 	Trspi_UnloadBlob_UINT32(offset, &delegations->per1, blob);
 	Trspi_UnloadBlob_UINT32(offset, &delegations->per2, blob);
+}
+
+TSS_RESULT
+Trspi_UnloadBlob_TPM_DELEGATIONS_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_DELEGATIONS *delegations)
+{
+	TSS_RESULT result;
+
+	if (!delegations) {
+		if ((result = Trspi_UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, NULL, blob, capacity)))
+			return result;
+
+		return TSS_SUCCESS;
+	}
+
+	if ((result = Trspi_UnloadBlob_UINT16_s(offset, &delegations->tag, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &delegations->delegateType, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &delegations->per1, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &delegations->per2, blob, capacity)))
+		return result;
+
+	return TSS_SUCCESS;
 }
 
 void
@@ -2899,6 +2940,55 @@ Trspi_UnloadBlob_TPM_DELEGATE_PUBLIC(UINT64 *offset, BYTE *blob, TPM_DELEGATE_PU
 	Trspi_UnloadBlob_UINT32(offset, &pub->familyID, blob);
 	Trspi_UnloadBlob_UINT32(offset, &pub->verificationCount, blob);
 
+	return TSS_SUCCESS;
+}
+
+TSS_RESULT
+Trspi_UnloadBlob_TPM_DELEGATE_PUBLIC_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_DELEGATE_PUBLIC *pub)
+{
+	TSS_RESULT result;
+
+	if (!pub) {
+		if ((result = Trspi_UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_TPM_DELEGATE_LABEL_s(offset, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_PCR_INFO_SHORT_s(offset, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_TPM_DELEGATIONS_s(offset, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, NULL, blob, capacity)))
+			return result;
+
+		return TSS_SUCCESS;
+	}
+
+	if ((result = Trspi_UnloadBlob_UINT16_s(offset, &pub->tag, blob, capacity)))
+		return result;
+	if ((result = Trspi_UnloadBlob_TPM_DELEGATE_LABEL_s(offset, blob, capacity, &pub->label)))
+		return result;
+	if ((result = Trspi_UnloadBlob_PCR_INFO_SHORT_s(offset, blob, capacity, &pub->pcrInfo)))
+		return result;
+	if ((result = Trspi_UnloadBlob_TPM_DELEGATIONS_s(offset, blob, capacity, &pub->permissions))) {
+		free(pub->pcrInfo.pcrSelection.pcrSelect);
+		pub->pcrInfo.pcrSelection.sizeOfSelect = 0;
+		pub->pcrInfo.pcrSelection.pcrSelect = NULL;
+		return result;
+	}
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &pub->familyID, blob, capacity))) {
+		free(pub->pcrInfo.pcrSelection.pcrSelect);
+		pub->pcrInfo.pcrSelection.sizeOfSelect = 0;
+		pub->pcrInfo.pcrSelection.pcrSelect = NULL;
+		return result;
+	}
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &pub->verificationCount, blob, capacity))) {
+		free(pub->pcrInfo.pcrSelection.pcrSelect);
+		pub->pcrInfo.pcrSelection.sizeOfSelect = 0;
+		pub->pcrInfo.pcrSelection.pcrSelect = NULL;
+		return result;
+	}
 	return TSS_SUCCESS;
 }
 
@@ -2959,6 +3049,103 @@ Trspi_UnloadBlob_TPM_DELEGATE_OWNER_BLOB(UINT64 *offset, BYTE *blob, TPM_DELEGAT
 	}
 
 	return TSS_SUCCESS;
+}
+
+TSS_RESULT
+Trspi_UnloadBlob_TPM_DELEGATE_OWNER_BLOB_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_DELEGATE_OWNER_BLOB *owner)
+{
+	TSS_RESULT result;
+
+	if (!owner) {
+		UINT32 additionalSize, sensitiveSize;
+
+		if ((result = Trspi_UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_TPM_DELEGATE_PUBLIC_s(offset, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_DIGEST_s(offset, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, &additionalSize, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_s(offset, additionalSize, blob, capacity, NULL)))
+			return result;
+		if ((result = Trspi_UnloadBlob_UINT32_s(offset, &sensitiveSize, blob, capacity)))
+			return result;
+		if ((result = Trspi_UnloadBlob_s(offset, sensitiveSize, blob, capacity, NULL)))
+			return result;
+
+		return TSS_SUCCESS;
+	}
+
+	if ((result = Trspi_UnloadBlob_UINT16_s(offset, &owner->tag, blob, capacity)))
+		goto error0;
+	if ((result = Trspi_UnloadBlob_TPM_DELEGATE_PUBLIC_s(offset, blob, capacity, &owner->pub)))
+		goto error0;
+	if ((result = Trspi_UnloadBlob_DIGEST_s(offset, blob, capacity, &owner->integrityDigest)))
+		goto error1;
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &owner->additionalSize, blob, capacity)))
+		goto error1;
+
+	if (*offset + owner->additionalSize > capacity) {
+		result = TSPERR(TSS_E_BAD_PARAMETER);
+		goto error1;
+	}
+
+	if (owner->additionalSize > 0) {
+		owner->additionalArea = malloc(owner->additionalSize);
+		if (owner->additionalArea == NULL) {
+			LogError("malloc of %u bytes failed.", owner->additionalSize);
+			result = TSPERR(TSS_E_OUTOFMEMORY);
+			goto error2;
+		}
+
+		if ((result = Trspi_UnloadBlob_s(offset, owner->additionalSize, blob, capacity, owner->additionalArea)))
+			goto error2;
+	} else {
+		owner->additionalArea = NULL;
+	}
+
+	if ((result = Trspi_UnloadBlob_UINT32_s(offset, &owner->sensitiveSize, blob, capacity)))
+		goto error2;
+
+	if (*offset + owner->sensitiveSize > capacity) {
+		result = TSPERR(TSS_E_BAD_PARAMETER);
+		goto error2;
+	}
+
+	if (owner->sensitiveSize > 0) {
+		owner->sensitiveArea = malloc(owner->sensitiveSize);
+		if (owner->sensitiveArea == NULL) {
+			LogError("malloc of %u bytes failed.", owner->sensitiveSize);
+			result = TSPERR(TSS_E_OUTOFMEMORY);
+			goto error3;
+		}
+
+		if ((result = Trspi_UnloadBlob_s(offset, owner->sensitiveSize, blob, capacity, owner->sensitiveArea)))
+			goto error3;
+	} else {
+		owner->sensitiveArea = NULL;
+	}
+
+	return TSS_SUCCESS;
+
+error3:
+	free(owner->sensitiveArea);
+	owner->sensitiveArea = NULL;
+	owner->sensitiveSize = 0;
+
+error2:
+	free(owner->additionalArea);
+	owner->additionalArea = NULL;
+	owner->additionalSize = 0;
+
+error1:
+	free(owner->pub.pcrInfo.pcrSelection.pcrSelect);
+	owner->pub.pcrInfo.pcrSelection.pcrSelect = NULL;
+	owner->pub.pcrInfo.pcrSelection.sizeOfSelect = 0;
+
+error0:
+	return result;
 }
 
 void
