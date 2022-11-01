@@ -34,6 +34,8 @@
 #include "rpc_tcstp_tsp.h"
 #include "tsp_tcsi_param.h"
 
+#include "libhwsec-foundation/tpm_error/tpm_error_data.h"
+#include "libhwsec-foundation/tpm_error/tpm_error_uma_report.h"
 
 void
 initData(struct tcsd_comm_data *comm, int parm_count)
@@ -254,6 +256,7 @@ sendTCSDPacket(struct host_table_entry *hte)
 {
 	TSS_RESULT rc;
 	UINT64 offset = 0;
+	UINT32 ordinal = 0;
 
 #ifdef MOCK_TPM
 	/*
@@ -270,6 +273,7 @@ sendTCSDPacket(struct host_table_entry *hte)
 	Trspi_LoadBlob_UINT32(&offset, hte->comm.hdr.type_offset, hte->comm.buf);
 	Trspi_LoadBlob_UINT32(&offset, hte->comm.hdr.parm_size, hte->comm.buf);
 	Trspi_LoadBlob_UINT32(&offset, hte->comm.hdr.parm_offset, hte->comm.buf);
+	ordinal = hte->comm.hdr.u.ordinal;
 
 #if 0
 	/* ---  Send it */
@@ -279,13 +283,15 @@ sendTCSDPacket(struct host_table_entry *hte)
 	/* if the ordinal is open context, there are some host table entry
 	 * manipulations that must be done, so call _init
 	 */
-	if (hte->comm.hdr.u.ordinal == TCSD_ORD_OPENCONTEXT) {
+	if (ordinal == TCSD_ORD_OPENCONTEXT) {
 		if ((rc = send_init(hte))) {
+			report_metrics(ordinal, rc);
 			LogError("Failed to send packet");
 			return rc;
 		}
 	} else {
 		if ((rc = tcs_sendit(hte))) {
+			report_metrics(ordinal, rc);
 			LogError("Failed to send packet");
 			return rc;
 		}
@@ -301,6 +307,7 @@ sendTCSDPacket(struct host_table_entry *hte)
 	Trspi_UnloadBlob_UINT32(&offset, &hte->comm.hdr.parm_size, hte->comm.buf);
 	Trspi_UnloadBlob_UINT32(&offset, &hte->comm.hdr.parm_offset, hte->comm.buf);
 
+	report_metrics(ordinal, hte->comm.hdr.u.result);
 	return TSS_SUCCESS;
 }
 
@@ -561,4 +568,18 @@ exit:
 		freeaddrinfo(res);
 
 	return result;
+}
+
+void
+report_metrics(UINT32 ordinal, UINT32 response) {
+	if (ordinal > TCSD_LAST_ORD) {
+		LogWarn("The ordinal (%d) is invalid.", ordinal);
+	}
+	// Mask out everything but layer and error code.
+	response &= 0xFFFF;
+
+	struct TpmErrorData data = {ordinal, response};
+	if (!ReportTpm1CommandAndResponse(&data)) {
+		LogError("Failed to report tpm1 command and reponse");
+	}
 }

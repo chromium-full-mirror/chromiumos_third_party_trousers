@@ -1,6 +1,7 @@
 lib_LTLIBRARIES=libtspi.la
 
-libtspi_la_LIBADD=${top_builddir}/src/trspi/libtrousers.la
+libtspi_la_LIBADD=${top_builddir}/src/trspi/libtrousers.la \
+                  -lhwsec-foundation
 
 # On setting -version-info, from the libtool manual:
 #
@@ -37,7 +38,6 @@ libtspi_la_SOURCES=log.c \
 
 if FUZZER
 libtspi_la_SOURCES+=rpc/@RPC@/fuzzed_rpc.c
-libtspi_la_LIBADD+=-lhwsec-foundation
 else
 libtspi_la_SOURCES+=rpc/@RPC@/rpc.c
 endif

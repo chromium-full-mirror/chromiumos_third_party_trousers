@@ -20,6 +20,7 @@ int setData(TCSD_PACKET_TYPE,int,void *,int,struct tcsd_comm_data *);
 UINT32 getData(TCSD_PACKET_TYPE,int,void *,int,struct tcsd_comm_data *);
 void initData(struct tcsd_comm_data *, int);
 TSS_RESULT sendTCSDPacket(struct host_table_entry *);
+void report_metrics(UINT32, UINT32);
 #ifndef FUZZED_TPM
 TSS_RESULT send_init(struct host_table_entry *);
 TSS_RESULT tcs_sendit(struct host_table_entry *);
