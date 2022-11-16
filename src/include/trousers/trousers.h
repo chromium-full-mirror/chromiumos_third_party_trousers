@@ -281,6 +281,13 @@ BYTE *Trspi_UNICODE_To_Native(BYTE *string, unsigned *len);
 
 /* Error Functions */
 
+/* return a human readable string of enum TCSD_ORD */
+char *Trspi_Ordinal_String(UINT32 ord);
+
+/* return a human readable string of the error code or NULL for unknown
+ * command */
+char *Trspi_Error_Code_String(TSS_RESULT r);
+
 /* return a human readable string based on the result */
 char *Trspi_Error_String(TSS_RESULT);
 
