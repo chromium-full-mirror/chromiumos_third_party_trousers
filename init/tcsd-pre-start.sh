@@ -1,4 +1,4 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,8 +8,6 @@ JOB="tcsd-pre-start"
 # middle of a command within 30s of boot in the previous boot session,
 # and report if bit is ON.
 if crossystem "tpm_attack?1"; then
-  metrics_client -v TPM.EarlyResetDuringCommand || \
-      logger -t "${JOB}" "metrics_client (early reset): status $?"
   crossystem "tpm_attack=0" || \
       logger -t "${JOB}" "crossystem: status $?"
 fi
