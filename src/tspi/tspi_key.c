@@ -375,10 +375,10 @@ Tspi_Key_WrapKey(TSS_HKEY hKey,			/* in */
 	/* get the key to be wrapped's private key */
 	if ((result = obj_rsakey_get_priv_blob(hKey, &keyPrivBlobLen, &keyPrivBlob)))
 		goto done;
-    /* verify if its under the maximum size, according to the
-     * TPM_STORE_ASYMKEY specification */
-    if (keyPrivBlobLen > TPM_STORE_PRIVKEY_LEN)
-        return TSPERR(TSS_E_ENC_INVALID_LENGTH);
+	/* verify if its under the maximum size, according to the
+	 * TPM_STORE_ASYMKEY specification */
+	if (keyPrivBlobLen > TPM_STORE_PRIVKEY_LEN)
+		return TSPERR(TSS_E_ENC_INVALID_LENGTH);
 
 	/* get the key to be wrapped's blob */
 	if ((result = obj_rsakey_get_blob(hKey, &keyBlobLen, &keyBlob)))
@@ -417,7 +417,7 @@ Tspi_Key_WrapKey(TSS_HKEY hKey,			/* in */
 	free_key_refs(&keyContainer);
 
 	/* create the plaintext private key blob. This is the point where the
-     * TPM structure TPM_STORE_ASYMKEY is crafted in the buffer */
+	 * TPM structure TPM_STORE_ASYMKEY is crafted in the buffer */
 	offset = 0;
 	Trspi_LoadBlob_BYTE(&offset, TCPA_PT_ASYM, newPrivKey);
 	Trspi_LoadBlob(&offset, USAGE_MIG_DIGEST_FLD_LEN,
