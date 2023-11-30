@@ -984,8 +984,8 @@ obj_policy_get_xsap_params(TSS_HPOLICY hPolicy,
 					      policy->popupString,
 					      policy->Secret)))
 			goto done;
-			policy->SecretSet = TRUE;
-	}	
+		policy->SecretSet = TRUE;
+	}
 	memcpy(secret, policy->Secret, TPM_SHA1_160_HASH_LEN);
 	*mode = policy->SecretMode;
 done:
