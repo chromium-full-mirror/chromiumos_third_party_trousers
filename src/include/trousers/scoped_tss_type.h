@@ -36,8 +36,9 @@ class ScopedTssContextRelease {
     // used slightly differently, it may end up with a context in |unused|.
     // For now, treat that as a bug.
     if (unused) {
-      NOTREACHED() << "Unexpected data in the unused argument - a misuse of "
-                      "ScopedTssContext. Please report to crbug.com/821825";
+      NOTREACHED_IN_MIGRATION()
+          << "Unexpected data in the unused argument - a misuse of "
+             "ScopedTssContext. Please report to crbug.com/821825";
       return;
     }
     if (context)
@@ -51,8 +52,9 @@ class ScopedTssMemoryRelease {
     if (!memory)
       return;
     if (!context) {
-      NOTREACHED() << "Leaking Trousers memory due to null context. Please "
-                      "report to crbug.com/821825";
+      NOTREACHED_IN_MIGRATION()
+          << "Leaking Trousers memory due to null context. Please "
+             "report to crbug.com/821825";
       return;
     }
     Tspi_Context_FreeMemory(context, memory);
@@ -65,8 +67,9 @@ class ScopedTssObjectRelease {
     if (!handle)
       return;
     if (!context) {
-      NOTREACHED() << "Leaking Trousers handle due to null context. Please "
-                      "report to crbug.com/821825";
+      NOTREACHED_IN_MIGRATION()
+          << "Leaking Trousers handle due to null context. Please "
+             "report to crbug.com/821825";
       return;
     }
     Tspi_Context_CloseObject(context, handle);
