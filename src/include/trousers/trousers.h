@@ -263,6 +263,8 @@ TSS_RESULT Trspi_SymEncrypt(UINT16 alg, UINT16 mode, BYTE *key, BYTE *iv, BYTE *
 			    BYTE *out, UINT32 *out_len);
 TSS_RESULT Trspi_SymDecrypt(UINT16 alg, UINT16 mode, BYTE *key, BYTE *iv, BYTE *in, UINT32 in_len,
 			    BYTE *out, UINT32 *out_len);
+int Trspi_Get_IV_Length(UINT16 alg, UINT16 mode);
+int Trspi_Get_Block_Size(UINT16 alg, UINT16 mode);
 
 TSS_RESULT Trspi_MGF1(UINT32 alg, UINT32 seedLen, BYTE *seed, UINT32 outLen, BYTE *out);
 

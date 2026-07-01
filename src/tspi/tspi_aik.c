@@ -570,6 +570,22 @@ Tspi_TPM_ActivateIdentity(TSS_HTPM hTPM,			/* in */
 	if ((result = Trspi_UnloadBlob_SYMMETRIC_KEY(&offset, symKeyBlob, &symKey)))
 		goto done;
 
+	/*
+	 * OpenSSL's EVP_DecryptUpdate expects the output buffer to be at least
+	 * ciphertext_len + block_size. To prevent buffer overflow of credBlob
+	 * (size sizeof(credBlob)), we must ensure:
+	 * ciphertext_len + block_size <= sizeof(credBlob)
+	 *
+	 * Since ciphertext_len = credSize - iv_len, this is equivalent to:
+	 * credSize <= sizeof(credBlob) + iv_len - block_size
+	 */
+	if (symCAAttestation.credSize > sizeof(credBlob) +
+		  Trspi_Get_IV_Length(symKey.algId, symKey.encScheme) -
+		  Trspi_Get_Block_Size(symKey.algId, symKey.encScheme)) {
+		result = TSPERR(TSS_E_BAD_PARAMETER);
+		goto done;
+	}
+
 	if ((result = Trspi_SymDecrypt(symKey.algId, symKey.encScheme, symKey.data, NULL,
 				       symCAAttestation.credential, symCAAttestation.credSize,
 				       credBlob, &credLen)))

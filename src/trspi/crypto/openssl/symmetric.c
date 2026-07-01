@@ -249,6 +249,20 @@ get_openssl_cipher(UINT16 alg, UINT16 mode)
 	return cipher;
 }
 
+int
+Trspi_Get_IV_Length(UINT16 alg, UINT16 mode)
+{
+	EVP_CIPHER *cipher = get_openssl_cipher(alg, mode);
+	return cipher ? EVP_CIPHER_iv_length(cipher) : 0;
+}
+
+int
+Trspi_Get_Block_Size(UINT16 alg, UINT16 mode)
+{
+	EVP_CIPHER *cipher = get_openssl_cipher(alg, mode);
+	return cipher ? EVP_CIPHER_block_size(cipher) : 0;
+}
+
 TSS_RESULT
 Trspi_SymEncrypt(UINT16 alg, UINT16 mode, BYTE *key, BYTE *iv, BYTE *in, UINT32 in_len, BYTE *out,
 		 UINT32 *out_len)
