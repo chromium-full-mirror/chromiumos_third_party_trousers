@@ -116,8 +116,8 @@ LoadKeyByBlob_Internal(UINT32 ord,	/* The ordinal to use, LoadKey or LoadKey2 */
 	}
 
 	offset = 0;
-	if ((result = tpm_rqu_build(ord, &offset, txBlob, parentSlot, cWrappedKeyBlobSize,
-				    rgbWrappedKeyBlob, pAuth, NULL)))
+	if ((result = tpm_rqu_build_checked(ord, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, parentSlot,
+					    cWrappedKeyBlobSize, rgbWrappedKeyBlob, pAuth, NULL)))
 		goto error;
 
 	LogDebugFn("Submitting request to the TPM");
