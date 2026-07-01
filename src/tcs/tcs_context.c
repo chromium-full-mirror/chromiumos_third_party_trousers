@@ -144,6 +144,9 @@ destroy_context(TCS_CONTEXT_HANDLE handle)
 		TCSP_FlushSpecific_Common(toKill->transHandle, TPM_RT_TRANS);
 #endif
 
+	auth_mgr_purge_cond(&toKill->cond);
+	COND_DESTROY(toKill->cond);
+
 	free(toKill);
 }
 

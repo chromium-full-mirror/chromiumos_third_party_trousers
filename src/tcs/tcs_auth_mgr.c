@@ -8,10 +8,13 @@
  *
  */
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 
 #include "trousers/tss.h"
 #include "trousers_types.h"
@@ -27,6 +30,12 @@
 
 
 MUTEX_DECLARE_EXTERN(tcsp_lock);
+
+#ifdef __GLIBC__
+#define ASSERT_TCSP_LOCK_HELD() DBG_ASSERT(tcsp_lock.__data.__owner == syscall(SYS_gettid))
+#else
+#define ASSERT_TCSP_LOCK_HELD()
+#endif
 
 /* Note: The after taking the auth_mgr_lock in any of the functions below, the
  * mem_cache_lock cannot be taken without risking a deadlock. So, the auth_mgr
@@ -64,6 +73,8 @@ auth_mgr_final()
 {
 	UINT32 i;
 
+	MUTEX_LOCK(tcsp_lock);
+
 	/* wake up any sleeping threads, so they can be joined */
 	for (i = 0; i < auth_mgr.overflow_size; i++) {
 		if (auth_mgr.overflow[i] != NULL)
@@ -71,7 +82,14 @@ auth_mgr_final()
 	}
 
 	free(auth_mgr.overflow);
+	auth_mgr.overflow = NULL;
+	auth_mgr.overflow_size = 0;
+
 	free(auth_mgr.auth_mapper);
+	auth_mgr.auth_mapper = NULL;
+	auth_mgr.auth_mapper_size = 0;
+
+	MUTEX_UNLOCK(tcsp_lock);
 
 	return TSS_SUCCESS;
 }
@@ -107,6 +125,7 @@ auth_mgr_save_ctx(TCS_CONTEXT_HANDLE hContext)
 void
 auth_mgr_swap_in()
 {
+	ASSERT_TCSP_LOCK_HELD();
 	if (auth_mgr.overflow[auth_mgr.of_tail] != NULL) {
 		LogDebug("waking up thread %lddd, auth slot has opened", THREAD_ID);
 		/* wake up the next sleeping thread in order and increment tail */
@@ -124,6 +143,8 @@ TSS_RESULT
 auth_mgr_swap_out(TCS_CONTEXT_HANDLE hContext)
 {
 	COND_VAR *cond;
+
+	ASSERT_TCSP_LOCK_HELD();
 
 	/* If the TPM can do swapping and it succeeds, return, else cond wait below */
 	if (tpm_metrics.authctx_swap && !auth_mgr_save_ctx(hContext))
@@ -193,12 +214,42 @@ auth_mgr_swap_out(TCS_CONTEXT_HANDLE hContext)
 	return TSS_SUCCESS;
 }
 
+void
+auth_mgr_purge_cond(COND_VAR *cond)
+{
+	UINT32 i, j;
+
+	MUTEX_LOCK(tcsp_lock);
+
+	for (i = 0; i < auth_mgr.overflow_size; ) {
+		if (auth_mgr.overflow[i] == cond) {
+			LogDebug("Purging cond %p from overflow queue", cond);
+			COND_SIGNAL(cond);
+
+			j = i;
+			while (((j + 1) % auth_mgr.overflow_size) != auth_mgr.of_head) {
+				UINT32 next_idx = (j + 1) % auth_mgr.overflow_size;
+				auth_mgr.overflow[j] = auth_mgr.overflow[next_idx];
+				j = next_idx;
+			}
+			auth_mgr.of_head = (auth_mgr.of_head + auth_mgr.overflow_size - 1) % auth_mgr.overflow_size;
+			auth_mgr.overflow[auth_mgr.of_head] = NULL;
+		} else {
+			i++;
+		}
+	}
+
+	MUTEX_UNLOCK(tcsp_lock);
+}
+
 /* close all auth contexts associated with this TCS_CONTEXT_HANDLE */
 TSS_RESULT
 auth_mgr_close_context(TCS_CONTEXT_HANDLE tcs_handle)
 {
 	UINT32 i;
 	TSS_RESULT result;
+
+	MUTEX_LOCK(tcsp_lock);
 
 	for (i = 0; i < auth_mgr.auth_mapper_size; i++) {
 		if (auth_mgr.auth_mapper[i].full == TRUE &&
@@ -236,6 +287,8 @@ auth_mgr_close_context(TCS_CONTEXT_HANDLE tcs_handle)
 			auth_mgr_swap_in();
 		}
 	}
+
+	MUTEX_UNLOCK(tcsp_lock);
 
 	return TSS_SUCCESS;
 }

@@ -77,6 +77,7 @@ TSS_RESULT auth_mgr_osap(TCS_CONTEXT_HANDLE, TCPA_ENTITY_TYPE, UINT32, TCPA_NONC
 			 TCS_AUTHHANDLE *, TCPA_NONCE *, TCPA_NONCE *);
 TSS_RESULT auth_mgr_close_context(TCS_CONTEXT_HANDLE);
 TSS_RESULT auth_mgr_swap_out(TCS_CONTEXT_HANDLE);
+void       auth_mgr_purge_cond(COND_VAR *);
 TSS_BOOL   auth_mgr_req_new(TCS_CONTEXT_HANDLE);
 TSS_RESULT auth_mgr_add(TCS_CONTEXT_HANDLE, TPM_AUTHHANDLE);
 

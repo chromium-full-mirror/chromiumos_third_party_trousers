@@ -29,6 +29,7 @@
 #define COND_VAR		pthread_cond_t
 #define COND_WAIT(c,m)		pthread_cond_wait(c,m)
 #define COND_SIGNAL(c)		pthread_cond_signal(c)
+#define COND_DESTROY(c)		pthread_cond_destroy(&c)
 
 /* thread abstractions */
 #define THREAD_ID			((THREAD_TYPE)pthread_self())
