@@ -91,7 +91,11 @@ LoadKeyByBlob_Internal(UINT32 ord,	/* The ordinal to use, LoadKey or LoadKey2 */
 			LogDebugFn("tcs key handle exists");
 
 			newSlot = mc_get_slot_by_handle(newHandle);
-			if (newSlot && (isKeyLoaded(newSlot) == TRUE)) {
+                        /* Only short-circuit if THIS context already loaded
+                         * the key; otherwise fall through to the TPM.
+                         * Prevents cross-context handle adoption. */
+                        if (newSlot && (isKeyLoaded(newSlot) == TRUE) &&
+                            ctx_has_key_loaded(hContext, newHandle)) {
 				LogDebugFn("Don't need to reload this key.");
 				*phKeyTCSI = newHandle;
 				if (phKeyHMAC)
@@ -388,4 +392,3 @@ done:
 	auth_mgr_release_auth(pOwnerAuth, NULL, hContext);
 	return result;
 }
-
