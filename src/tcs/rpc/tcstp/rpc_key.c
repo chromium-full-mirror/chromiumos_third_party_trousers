@@ -198,8 +198,11 @@ tcs_wrap_LoadKeyByBlob(struct tcsd_thread_data *data)
 	result = key_mgr_load_by_blob(hContext, hUnwrappingKey, cWrappedKeyBlob, rgbWrappedKeyBlob,
 				      pAuth, &phKeyTCSI, &phKeyHMAC);
 
-	if (!result)
-		result = ctx_mark_key_loaded(hContext, phKeyTCSI);
+        if (!result) {
+                MUTEX_LOCK(mem_cache_lock);
+                result = ctx_mark_key_loaded(hContext, phKeyTCSI);
+                MUTEX_UNLOCK(mem_cache_lock);
+        }
 
 	MUTEX_UNLOCK(tcsp_lock);
 
@@ -274,8 +277,11 @@ tcs_wrap_LoadKey2ByBlob(struct tcsd_thread_data *data)
 	result = key_mgr_load_by_blob(hContext, hUnwrappingKey, cWrappedKeyBlob, rgbWrappedKeyBlob,
 				      pAuth, &phKeyTCSI, NULL);
 
-	if (!result)
-		result = ctx_mark_key_loaded(hContext, phKeyTCSI);
+        if (!result) {
+                MUTEX_LOCK(mem_cache_lock);
+                result = ctx_mark_key_loaded(hContext, phKeyTCSI);
+                MUTEX_UNLOCK(mem_cache_lock);
+        }
 
 	MUTEX_UNLOCK(tcsp_lock);
 
