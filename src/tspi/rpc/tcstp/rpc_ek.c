@@ -69,11 +69,13 @@ RPC_CreateEndorsementKeyPair_TP(struct host_table_entry *hte,
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, 1, *endorsementKey, *endorsementKeySize, &hte->comm)) {
 			free(*endorsementKey);
+			*endorsementKey = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_DIGEST, 2, &(checksum->digest), 0, &hte->comm)) {
 			free(*endorsementKey);
+			*endorsementKey = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}
@@ -275,11 +277,13 @@ RPC_CreateRevocableEndorsementKeyPair_TP(struct host_table_entry *hte,
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, 2, *endorsementKey, *endorsementKeySize, &hte->comm)) {
 			free(*endorsementKey);
+			*endorsementKey = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_DIGEST, 3, &(checksum->digest), 0, &hte->comm)) {
 			free(*endorsementKey);
+			*endorsementKey = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}

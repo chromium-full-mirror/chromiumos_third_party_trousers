@@ -142,15 +142,19 @@ Tspi_TPM_Quote2(TSS_HTPM        hTPM,            // in
 		result |= Trspi_HashUpdate(&hashCtx, sigSize, sig);
 		if ((result |= Trspi_HashFinal(&hashCtx, digest.digest))) {
 			free(pcrDataOut);
-			if (*versionInfoSize > 0)
+			if (*versionInfoSize > 0) {
 				free(*versionInfo);
+				*versionInfo = NULL;
+			}
 			free(sig);
 			return result;
 		}
 		if ((result = obj_policy_validate_auth_oiap(hPolicy, &digest, &privAuth))) {
 			free(pcrDataOut);
-			if (*versionInfoSize > 0)
+			if (*versionInfoSize > 0) {
 				free(*versionInfo);
+				*versionInfo = NULL;
+			}
 			free(sig);
 			return result;
 		}
@@ -164,8 +168,10 @@ Tspi_TPM_Quote2(TSS_HTPM        hTPM,            // in
 		if ((result = Trspi_UnloadBlob_PCR_INFO_SHORT(&offset, pcrDataOut, &pcrInfo))) {
 			free(pcrDataOut);
 			free(pcrInfo.pcrSelection.pcrSelect);
-			if (*versionInfoSize > 0)
+			if (*versionInfoSize > 0) {
 				free(*versionInfo);
+				*versionInfo = NULL;
+			}
 			free(sig);
 			return result;
 		}
@@ -174,8 +180,10 @@ Tspi_TPM_Quote2(TSS_HTPM        hTPM,            // in
 		/* Set both digestAtRelease and localityAtRelease */
 		if ((result = obj_pcrs_set_locality(hPcrComposite, pcrInfo.localityAtRelease))) {
 			free(pcrDataOut);
-			if (*versionInfoSize > 0)
+			if (*versionInfoSize > 0) {
 				free(*versionInfo);
+				*versionInfo = NULL;
+			}
 			free(sig);
 			return result;
 		}
@@ -183,8 +191,10 @@ Tspi_TPM_Quote2(TSS_HTPM        hTPM,            // in
 		if ((result = obj_pcrs_set_digest_at_release(hPcrComposite,
 							     pcrInfo.digestAtRelease))) {
 			free(pcrDataOut);
-			if (*versionInfoSize > 0)
+			if (*versionInfoSize > 0) {
 				free(*versionInfo);
+				*versionInfo = NULL;
+			}
 			free(sig);
 			return result;
 		}
@@ -224,15 +234,19 @@ Tspi_TPM_Quote2(TSS_HTPM        hTPM,            // in
 	if (pValidationData == NULL) {
 		if ((result = Trspi_Hash(TSS_HASH_SHA1, offset, quoteinfo, digest.digest))) {
 			free(sig);
-			if (*versionInfoSize > 0)
+			if (*versionInfoSize > 0) {
 				free(*versionInfo);
+				*versionInfo = NULL;
+			}
 			return result;
 		}
 		if ((result = __tspi_rsa_verify(hIdentKey,TSS_HASH_SHA1,sizeof(digest.digest),
 					 digest.digest, sigSize, sig))) {
 			free(sig);
-			if (*versionInfoSize > 0)
+			if (*versionInfoSize > 0) {
 				free(*versionInfo);
+				*versionInfo = NULL;
+			}
 			return TSPERR(TSS_E_VERIFICATION_FAILED);
 		}
 		free(sig);
@@ -241,8 +255,10 @@ Tspi_TPM_Quote2(TSS_HTPM        hTPM,            // in
 		if (pValidationData->rgbValidationData == NULL) {
 			LogError("malloc of %u bytes failed.", sigSize);
 			free(sig);
-			if (*versionInfoSize > 0)
+			if (*versionInfoSize > 0) {
 				free(*versionInfo);
+				*versionInfo = NULL;
+			}
 			return TSPERR(TSS_E_OUTOFMEMORY);
 		}
 		pValidationData->ulValidationDataLength = sigSize;
@@ -255,8 +271,10 @@ Tspi_TPM_Quote2(TSS_HTPM        hTPM,            // in
 			free_tspi(tspContext, pValidationData->rgbValidationData);
 			pValidationData->rgbValidationData = NULL;
 			pValidationData->ulValidationDataLength = 0;
-			if (*versionInfoSize > 0)
+			if (*versionInfoSize > 0) {
 				free(*versionInfo);
+				*versionInfo = NULL;
+			}
 			return TSPERR(TSS_E_OUTOFMEMORY);
 		}
 		pValidationData->ulDataLength = (UINT32)offset;
@@ -275,11 +293,13 @@ Tspi_TPM_Quote2(TSS_HTPM        hTPM,            // in
 				pValidationData->rgbData = NULL;
 				pValidationData->ulDataLength = 0;
 				free(*versionInfo);
+				*versionInfo = NULL;
 				return result;
 			}
 		}
 		else {
 			free(*versionInfo);
+			*versionInfo = NULL;
 		}
         } 
 

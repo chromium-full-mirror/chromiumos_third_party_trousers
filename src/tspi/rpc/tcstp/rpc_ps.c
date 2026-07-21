@@ -66,6 +66,7 @@ RPC_GetRegisteredKeyByPublicInfo_TP(struct host_table_entry *hte,
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, 1, *keyBlob, *keySize, &hte->comm)) {
 			free(*keyBlob);
+			*keyBlob = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
@@ -181,6 +182,7 @@ RPC_EnumRegisteredKeys_TP(struct host_table_entry *hte,
 				if (getData(TCSD_PACKET_TYPE_KM_KEYINFO, i++,
 					    &((*ppKeyHierarchy)[j]), 0, &hte->comm)) {
 					free(*ppKeyHierarchy);
+					*ppKeyHierarchy = NULL;
 					result = TSPERR(TSS_E_INTERNAL_ERROR);
 					goto done;
 				}
@@ -240,6 +242,7 @@ RPC_EnumRegisteredKeys2_TP(struct host_table_entry *hte,
 				if (getData(TCSD_PACKET_TYPE_KM_KEYINFO2, i++,
 					    &((*ppKeyHierarchy)[j]), 0, &hte->comm)) {
 					free(*ppKeyHierarchy);
+					*ppKeyHierarchy = NULL;
 					result = TSPERR(TSS_E_INTERNAL_ERROR);
 					goto done;
 				}
@@ -296,6 +299,7 @@ RPC_GetRegisteredKeyBlob_TP(struct host_table_entry *hte,
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, 1, *prgbKey, *pcKeySize, &hte->comm)) {
 			free(*prgbKey);
+			*prgbKey = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}
@@ -370,4 +374,3 @@ UnloadBlob_LOADKEY_INFO(UINT64 *offset, BYTE *blob, TCS_LOADKEY_INFO *info)
 	Trspi_UnloadBlob_BOOL(offset, &info->authData.fContinueAuthSession, blob);
 	Trspi_UnloadBlob(offset, TCPA_DIGEST_SIZE, blob, (BYTE *)&info->authData.HMAC);
 }
-

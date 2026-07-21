@@ -261,6 +261,7 @@ RPC_AuthorizeMigrationKey_TP(struct host_table_entry *hte,
 		if (getData(TCSD_PACKET_TYPE_PBYTE, 2, *MigrationKeyAuth, *MigrationKeyAuthSize,
 			    &hte->comm)) {
 			free(*MigrationKeyAuth);
+			*MigrationKeyAuth = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}

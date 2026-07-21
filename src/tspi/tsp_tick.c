@@ -110,6 +110,7 @@ Transport_TickStampBlob(TSS_HCONTEXT   tspContext,            /* in */
 	if ((*prgbSignature = malloc(*pulSignatureLength)) == NULL) {
 		free(dec);
 		free(*prgbTickCount);
+		*prgbTickCount = NULL;
 		*pulTickCountLength = 0;
 		LogError("malloc of %u bytes failed", *pulSignatureLength);
 		*pulSignatureLength = 0;

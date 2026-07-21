@@ -86,6 +86,7 @@ RPC_TakeOwnership_TP(struct host_table_entry *hte,
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, 2, *srkKey, *srkKeySize, &hte->comm)) {
 			free(*srkKey);
+			*srkKey = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}

@@ -81,6 +81,7 @@ RPC_Delegate_Manage_TP(struct host_table_entry *hte,
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *retData, *retDataSize, &hte->comm)) {
 			free(*retData);
+			*retData = NULL;
 			return TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}
@@ -146,6 +147,7 @@ RPC_Delegate_CreateKeyDelegation_TP(struct host_table_entry *hte,
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *blob, *blobSize, &hte->comm)) {
 			free(*blob);
+			*blob = NULL;
 			return TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}
@@ -211,6 +213,7 @@ RPC_Delegate_CreateOwnerDelegation_TP(struct host_table_entry *hte,
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *blob, *blobSize, &hte->comm)) {
 			free(*blob);
+			*blob = NULL;
 			return TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}
@@ -296,22 +299,27 @@ RPC_Delegate_ReadTable_TP(struct host_table_entry *hte,
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, 1, *familyTable, *familyTableSize, &hte->comm)) {
 			free(*familyTable);
+			*familyTable = NULL;
 			return TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 
 		if (getData(TCSD_PACKET_TYPE_UINT32, 2, delegateTableSize, 0, &hte->comm)) {
 			free(*familyTable);
+			*familyTable = NULL;
 			return TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 		*delegateTable = (BYTE *)malloc(*delegateTableSize);
 		if (*delegateTable == NULL) {
 			free(*familyTable);
+			*familyTable = NULL;
 			LogError("malloc of %u bytes failed.", *delegateTableSize);
 			return TSPERR(TSS_E_OUTOFMEMORY);
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, 3, *delegateTable, *delegateTableSize, &hte->comm)) {
 			free(*familyTable);
+			*familyTable = NULL;
 			free(*delegateTable);
+			*delegateTable = NULL;
 			return TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}
@@ -371,7 +379,7 @@ RPC_Delegate_UpdateVerificationCount_TP(struct host_table_entry *hte,
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *output, *outputSize, &hte->comm)) {
 			free(*output);
-			output = NULL;
+			*output = NULL;
 			return TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}

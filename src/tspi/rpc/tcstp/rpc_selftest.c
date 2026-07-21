@@ -100,6 +100,7 @@ RPC_CertifySelfTest_TP(struct host_table_entry *hte,
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *sig, *sigSize, &hte->comm)) {
 			LogDebug("sig");
 			free(*sig);
+			*sig = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}

@@ -203,21 +203,25 @@ RPC_GetAuditDigestSigned_TP(struct host_table_entry *hte,
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *counterValue, *counterValueSize, &hte->comm)) {
 			free(*counterValue);
+			*counterValue = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_DIGEST, i++, auditDigest, 0, &hte->comm)) {
 			free(*counterValue);
+			*counterValue = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_DIGEST, i++, ordinalDigest, 0, &hte->comm)) {
 			free(*counterValue);
+			*counterValue = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_UINT32, i++, sigSize, 0, &hte->comm)) {
 			free(*counterValue);
+			*counterValue = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
@@ -225,12 +229,15 @@ RPC_GetAuditDigestSigned_TP(struct host_table_entry *hte,
 		if (*sig == NULL) {
 			LogError("malloc of %u bytes failed.", *sigSize);
 			free(*counterValue);
+			*counterValue = NULL;
 			result = TSPERR(TSS_E_OUTOFMEMORY);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *sig, *sigSize, &hte->comm)) {
 			free(*counterValue);
+			*counterValue = NULL;
 			free(*sig);
+			*sig = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}

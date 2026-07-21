@@ -90,6 +90,7 @@ RPC_ChangeAuth_TP(struct host_table_entry *hte,
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, 3, *outData, *outDataSize, &hte->comm)) {
 			free(*outData);
+			*outData = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}

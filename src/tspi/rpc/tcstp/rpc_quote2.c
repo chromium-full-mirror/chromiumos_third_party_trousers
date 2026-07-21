@@ -73,6 +73,9 @@ RPC_Quote2_TP(struct host_table_entry *hte,
 
 	/* Takes and sets the output data */
 	if (result == TSS_SUCCESS) {
+		*pcrDataOut = NULL;
+		*versionInfo = NULL;
+		*sig = NULL;
 		i = 0;
 		if (privAuth) {
 			if (getData(TCSD_PACKET_TYPE_AUTH, i++, privAuth, 0, &hte->comm)) {
@@ -93,12 +96,14 @@ RPC_Quote2_TP(struct host_table_entry *hte,
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *pcrDataOut, *pcrDataSizeOut, &hte->comm)) {
 			free(*pcrDataOut);
+			*pcrDataOut = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 		/* Retrieves the versionInfo Parameters */
 		if (getData(TCSD_PACKET_TYPE_UINT32, i++, versionInfoSize, 0, &hte->comm)) {
 			free(*pcrDataOut);
+			*pcrDataOut = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
@@ -107,13 +112,16 @@ RPC_Quote2_TP(struct host_table_entry *hte,
 			if (*versionInfo == NULL) {
 				LogError("malloc of %u bytes failed.", *versionInfoSize);
 				free(*pcrDataOut);
+				*pcrDataOut = NULL;
 				result = TSPERR(TSS_E_OUTOFMEMORY);
 				goto done;
 			}
 			if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *versionInfo, *versionInfoSize,
 				    &hte->comm)) {
 				free(*pcrDataOut);
+				*pcrDataOut = NULL;
 				free(*versionInfo);
+				*versionInfo = NULL;
 				result = TSPERR(TSS_E_INTERNAL_ERROR);
 				goto done;
 			}
@@ -121,8 +129,9 @@ RPC_Quote2_TP(struct host_table_entry *hte,
 
 		if (getData(TCSD_PACKET_TYPE_UINT32, i++, sigSize, 0, &hte->comm)) {
 			free(*pcrDataOut);
-			if (addVersion)
-				free(*versionInfo);
+			*pcrDataOut = NULL;
+			free(*versionInfo);
+			*versionInfo = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
@@ -130,16 +139,19 @@ RPC_Quote2_TP(struct host_table_entry *hte,
 		if (*sig == NULL) {
 			LogError("malloc of %u bytes failed.", *sigSize);
 			free(*pcrDataOut);
-			if (addVersion)
-				free(*versionInfo);
+			*pcrDataOut = NULL;
+			free(*versionInfo);
+			*versionInfo = NULL;
 			result = TSPERR(TSS_E_OUTOFMEMORY);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *sig, *sigSize, &hte->comm)) {
 			free(*pcrDataOut);
-			if (addVersion)
-				free(*versionInfo);
+			*pcrDataOut = NULL;
+			free(*versionInfo);
+			*versionInfo = NULL;
 			free(*sig);
+			*sig = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 		}
 	}

@@ -102,11 +102,13 @@ RPC_CertifyKey_TP(struct host_table_entry *hte,
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *CertifyInfo, *CertifyInfoSize, &hte->comm)) {
 			free(*CertifyInfo);
+			*CertifyInfo = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_UINT32, i++, outDataSize, 0, &hte->comm)) {
 			free(*CertifyInfo);
+			*CertifyInfo = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
@@ -115,12 +117,15 @@ RPC_CertifyKey_TP(struct host_table_entry *hte,
 		if (*outData == NULL) {
 			LogError("malloc of %u bytes failed.", *outDataSize);
 			free(*CertifyInfo);
+			*CertifyInfo = NULL;
 			result = TSPERR(TSS_E_OUTOFMEMORY);
 			goto done;
 		}
 		if (getData(TCSD_PACKET_TYPE_PBYTE, i++, *outData, *outDataSize, &hte->comm)) {
 			free(*CertifyInfo);
+			*CertifyInfo = NULL;
 			free(*outData);
+			*outData = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}

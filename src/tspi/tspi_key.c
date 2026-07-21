@@ -628,7 +628,7 @@ Tspi_TPM_OwnerGetSRKPubKey(TSS_HTPM hTPM,		/* in */
 
 error:
 	free(*prgbPubKey);
-	pulPuKeyLength = 0;
+	*prgbPubKey = NULL;
 	return result;
 }
 

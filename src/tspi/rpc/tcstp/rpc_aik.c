@@ -224,6 +224,7 @@ RPC_GetCredential_TP(struct host_table_entry *hte,
 		if (getData(TCSD_PACKET_TYPE_PBYTE, 1, *prgbCredentialData,
 			    *pulCredentialSize, &hte->comm)) {
 			free(*prgbCredentialData);
+			*prgbCredentialData = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
                 }
 	}

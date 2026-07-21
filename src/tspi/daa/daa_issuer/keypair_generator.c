@@ -354,8 +354,10 @@ close:
 		if (public_key != NULL)
 			free(public_key);
 
-		if (*key_pair_with_proof != NULL)
+		if (*key_pair_with_proof != NULL) {
 			free(*key_pair_with_proof);
+			*key_pair_with_proof = NULL;
+		}
 	}
 	/*
 	Fields kept by structures

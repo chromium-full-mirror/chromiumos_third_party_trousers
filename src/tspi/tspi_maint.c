@@ -81,19 +81,26 @@ Tspi_TPM_CreateMaintenanceArchive(TSS_HTPM hTPM,			/* in */
 	if ((result = obj_policy_validate_auth_oiap(hOwnerPolicy, &digest, &ownerAuth)))
 		goto error1;
 
-	if ((result = __tspi_add_mem_entry(tspContext, *prgbRndNumber)))
-		goto error1;
+	if (*prgbRndNumber) {
+		if ((result = __tspi_add_mem_entry(tspContext, *prgbRndNumber)))
+			goto error1;
+	}
 
 	if ((result = __tspi_add_mem_entry(tspContext, *prgbArchiveData))) {
-		free_tspi(tspContext, *prgbRndNumber);
+		if (*prgbRndNumber) {
+			free_tspi(tspContext, *prgbRndNumber);
+			*prgbRndNumber = NULL;
+		}
 		goto error2;
 	}
 
 	return TSS_SUCCESS;
 error1:
 	free(*prgbRndNumber);
+	*prgbRndNumber = NULL;
 error2:
 	free(*prgbArchiveData);
+	*prgbArchiveData = NULL;
 	return result;
 }
 
