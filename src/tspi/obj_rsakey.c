@@ -1288,41 +1288,46 @@ obj_rsakey_get_exponent(TSS_HKEY hKey, UINT32 *size, BYTE **data)
 	struct tsp_object *obj;
 	struct tr_rsakey_obj *rsakey;
 	TSS_RESULT result = TSS_SUCCESS;
-	TCPA_RSA_KEY_PARMS *parms;
-	BYTE default_exp[3] = { 0x1, 0x0, 0x1 };
-	UINT32 offset;
+	TCPA_RSA_KEY_PARMS rsaParms = { 0 };
+	static const BYTE default_exp[] = { 0x1, 0x0, 0x1 };
+	UINT64 offset;
 
 	if ((obj = obj_list_get_obj(&rsakey_list, hKey)) == NULL)
 		return TSPERR(TSS_E_INVALID_HANDLE);
 
 	rsakey = (struct tr_rsakey_obj *)obj->data;
-	parms = (TCPA_RSA_KEY_PARMS *)rsakey->key.algorithmParms.parms;
-	offset = parms->exponentSize;
+
+	if (rsakey->key.algorithmParms.parms != NULL) {
+		offset = 0;
+		if ((result = Trspi_UnloadBlob_RSA_KEY_PARMS_s(&offset, rsakey->key.algorithmParms.parms,
+							       rsakey->key.algorithmParms.parmSize, &rsaParms)))
+			goto done;
+	}
 
 	/* see TPM 1.1b spec pg. 51. If exponentSize is 0, we're using the
 	 * default exponent of 2^16 + 1. */
-	if (offset == 0) {
-		offset = 3;
-		*data = calloc_tspi(obj->tspContext, offset);
+	if (rsaParms.exponentSize == 0) {
+		*data = calloc_tspi(obj->tspContext, sizeof(default_exp));
 		if (*data == NULL) {
-			LogError("malloc of %u bytes failed.", offset);
+			LogError("malloc of %zu bytes failed.", sizeof(default_exp));
 			result = TSPERR(TSS_E_OUTOFMEMORY);
 			goto done;
 		}
-		*size = offset;
-		memcpy(*data, default_exp, offset);
+		*size = sizeof(default_exp);
+		memcpy(*data, default_exp, sizeof(default_exp));
 	} else {
-		*data = calloc_tspi(obj->tspContext, offset);
+		*data = calloc_tspi(obj->tspContext, rsaParms.exponentSize);
 		if (*data == NULL) {
-			LogError("malloc of %u bytes failed.", offset);
+			LogError("malloc of %u bytes failed.", rsaParms.exponentSize);
 			result = TSPERR(TSS_E_OUTOFMEMORY);
 			goto done;
 		}
-		*size = offset;
-		memcpy(*data, parms->exponent, offset);
+		*size = rsaParms.exponentSize;
+		memcpy(*data, rsaParms.exponent, *size);
 	}
 
 done:
+	free(rsaParms.exponent);
 	obj_list_put(&rsakey_list);
 
 	return result;
@@ -1334,8 +1339,9 @@ obj_rsakey_set_exponent(TSS_HKEY hKey, UINT32 size, BYTE *data)
 	struct tsp_object *obj;
 	struct tr_rsakey_obj *rsakey;
 	TSS_RESULT result = TSS_SUCCESS;
-	TCPA_RSA_KEY_PARMS *parms;
-	BYTE *free_ptr;
+	TCPA_RSA_KEY_PARMS rsaParms = { 0 };
+	UINT64 offset, write_offset;
+	BYTE *new_parms_blob = NULL;
 
 	if ((obj = obj_list_get_obj(&rsakey_list, hKey)) == NULL)
 		return TSPERR(TSS_E_INVALID_HANDLE);
@@ -1346,21 +1352,56 @@ obj_rsakey_set_exponent(TSS_HKEY hKey, UINT32 size, BYTE *data)
 	}
 
 	rsakey = (struct tr_rsakey_obj *)obj->data;
-	parms = (TCPA_RSA_KEY_PARMS *)rsakey->key.algorithmParms.parms;
 
-	free_ptr = parms->exponent;
+	if (rsakey->key.algorithmParms.parms == NULL) {
+		rsaParms.keyLength = 2048; // default
+		rsaParms.numPrimes = 2;
+		rsaParms.exponentSize = 0;
+		rsaParms.exponent = NULL;
+	} else {
+		offset = 0;
+		if ((result = Trspi_UnloadBlob_RSA_KEY_PARMS_s(&offset, rsakey->key.algorithmParms.parms,
+							       rsakey->key.algorithmParms.parmSize, &rsaParms)))
+			goto done;
+	}
 
-	parms->exponent = malloc(size);
-	if (parms->exponent == NULL) {
-		parms->exponent = free_ptr; // restore
-		LogError("malloc of %u bytes failed.", size);
+	free(rsaParms.exponent);
+	rsaParms.exponent = NULL;
+
+	if (size > 0) {
+		if (data == NULL) {
+			result = TSPERR(TSS_E_BAD_PARAMETER);
+			goto done;
+		}
+		rsaParms.exponent = malloc(size);
+		if (rsaParms.exponent == NULL) {
+			LogError("malloc of %u bytes failed.", size);
+			result = TSPERR(TSS_E_OUTOFMEMORY);
+			goto done;
+		}
+		memcpy(rsaParms.exponent, data, size);
+	}
+	rsaParms.exponentSize = size;
+
+	offset = 0;
+	Trspi_LoadBlob_RSA_KEY_PARMS(&offset, NULL, &rsaParms);
+
+	new_parms_blob = malloc(offset);
+	if (new_parms_blob == NULL) {
+		LogError("malloc of %" PRIu64 " bytes failed.", offset);
 		result = TSPERR(TSS_E_OUTOFMEMORY);
 		goto done;
 	}
-	free(free_ptr);
-	parms->exponentSize = size;
-	memcpy(parms->exponent, data, size);
+
+	write_offset = 0;
+	Trspi_LoadBlob_RSA_KEY_PARMS(&write_offset, new_parms_blob, &rsaParms);
+
+	free(rsakey->key.algorithmParms.parms);
+	rsakey->key.algorithmParms.parms = new_parms_blob;
+	rsakey->key.algorithmParms.parmSize = write_offset;
+
 done:
+	free(rsaParms.exponent);
 	obj_list_put(&rsakey_list);
 
 	return result;
