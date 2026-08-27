@@ -653,10 +653,15 @@ psfile_remove_key(int fd, TSS_UUID *uuid)
 
 	__tspi_memset(buf, 0, sizeof(buf));
 
-	/* Zero out the old tail end of the file */
-	if ((result = write_data(fd, (void *)buf, tail_offset - head_offset))) {
-		LogDebug("%s", __FUNCTION__);
-		return result;
+	/* Zero out the old tail end of the file. The gap (tail_offset -
+	 * head_offset) equals the removed key's footprint, which can exceed
+	 * sizeof(buf); write in bounded chunks. */
+	for (size = tail_offset - head_offset; size > 0;
+	     size -= MIN((UINT32)size, (UINT32)sizeof(buf))) {
+		if ((result = write_data(fd, (void *)buf, MIN((UINT32)size, (UINT32)sizeof(buf))))) {
+			LogDebug("%s", __FUNCTION__);
+			return result;
+		}
 	}
 
 	if ((rc = ftruncate(fd, head_offset)) < 0) {
