@@ -32,21 +32,31 @@ ps_init_disk_cache(void)
 {
 	int fd;
 	TSS_RESULT rc;
+	MUTEX_INIT_RECURSIVE(disk_cache_lock);
 
-	MUTEX_INIT(disk_cache_lock);
+	MUTEX_LOCK(disk_cache_lock);
 
-	if ((fd = get_file()) < 0)
+	if ((fd = get_file()) < 0) {
+		MUTEX_UNLOCK(disk_cache_lock);
 		return TCSERR(TSS_E_INTERNAL_ERROR);
+	}
 
-	if ((rc = init_disk_cache(fd)))
+	if ((rc = init_disk_cache(fd))) {
+		put_file(fd);
+		MUTEX_UNLOCK(disk_cache_lock);
 		return rc;
+	}
 
 	/* this is temporary, to clear out a PS file from trousers
 	 * versions before 0.2.1 */
-	if ((rc = clean_disk_cache(fd)))
+	if ((rc = clean_disk_cache(fd))) {
+		put_file(fd);
+		MUTEX_UNLOCK(disk_cache_lock);
 		return rc;
+	}
 
 	put_file(fd);
+	MUTEX_UNLOCK(disk_cache_lock);
 	return TSS_SUCCESS;
 }
 
@@ -55,14 +65,17 @@ ps_close_disk_cache(void)
 {
 	int fd;
 
+	MUTEX_LOCK(disk_cache_lock);
 	if ((fd = get_file()) < 0) {
 		LogError("get_file() failed while trying to close disk cache.");
+		MUTEX_UNLOCK(disk_cache_lock);
 		return;
 	}
 
 	close_disk_cache(fd);
 
 	put_file(fd);
+	MUTEX_UNLOCK(disk_cache_lock);
 }
 
 TSS_BOOL
@@ -73,11 +86,15 @@ ps_is_key_registered(TCPA_STORE_PUBKEY *pub)
 	TSS_RESULT rc;
 	TSS_BOOL is_reg = FALSE;
 
-	if ((fd = get_file()) < 0)
+	MUTEX_LOCK(disk_cache_lock);
+	if ((fd = get_file()) < 0) {
+		MUTEX_UNLOCK(disk_cache_lock);
 		return FALSE;
+	}
 
 	if ((rc = psfile_get_uuid_by_pub(fd, pub, &uuid))) {
 		put_file(fd);
+		MUTEX_UNLOCK(disk_cache_lock);
 		return FALSE;
 	}
 
@@ -86,6 +103,7 @@ ps_is_key_registered(TCPA_STORE_PUBKEY *pub)
 	if ((isUUIDRegistered(uuid, &is_reg)))
 		is_reg = FALSE;
 
+	MUTEX_UNLOCK(disk_cache_lock);
 	free(uuid);
 	return is_reg;
 }
@@ -230,6 +248,8 @@ clean_disk_cache(int fd)
 				disk_cache_shift(tmp);
 				if (prev) {
 					prev->next = tmp->next;
+				} else {
+					key_disk_cache_head = tmp->next;
 				}
 				free(tmp);
 			} else {
@@ -251,12 +271,16 @@ ps_get_key_by_uuid(TSS_UUID *uuid, BYTE *blob, UINT16 *blob_size)
         int fd = -1;
         TSS_RESULT rc = TSS_SUCCESS;
 
-        if ((fd = get_file()) < 0)
+        MUTEX_LOCK(disk_cache_lock);
+        if ((fd = get_file()) < 0) {
+                MUTEX_UNLOCK(disk_cache_lock);
                 return TCSERR(TSS_E_INTERNAL_ERROR);
+        }
 
         rc = psfile_get_key_by_uuid(fd, uuid, blob, blob_size);
 
         put_file(fd);
+        MUTEX_UNLOCK(disk_cache_lock);
         return rc;
 }
 
@@ -266,12 +290,16 @@ ps_get_key_by_cache_entry(struct key_disk_cache *c, BYTE *blob, UINT16 *blob_siz
         int fd = -1;
         TSS_RESULT rc = TSS_SUCCESS;
 
-        if ((fd = get_file()) < 0)
+        MUTEX_LOCK(disk_cache_lock);
+        if ((fd = get_file()) < 0) {
+                MUTEX_UNLOCK(disk_cache_lock);
                 return TCSERR(TSS_E_INTERNAL_ERROR);
+        }
 
         rc = psfile_get_key_by_cache_entry(fd, c, blob, blob_size);
 
         put_file(fd);
+        MUTEX_UNLOCK(disk_cache_lock);
         return rc;
 }
 
@@ -281,12 +309,16 @@ ps_get_vendor_data(struct key_disk_cache *c, UINT32 *size, BYTE **data)
         int fd = -1;
         TSS_RESULT rc;
 
-        if ((fd = get_file()) < 0)
+        MUTEX_LOCK(disk_cache_lock);
+        if ((fd = get_file()) < 0) {
+                MUTEX_UNLOCK(disk_cache_lock);
                 return TCSERR(TSS_E_INTERNAL_ERROR);
+        }
 
         rc = psfile_get_vendor_data(fd, c, size, data);
 
         put_file(fd);
+        MUTEX_UNLOCK(disk_cache_lock);
         return rc;
 }
 
@@ -296,15 +328,20 @@ ps_is_pub_registered(TCPA_STORE_PUBKEY *key)
         int fd = -1;
         TSS_BOOL answer;
 
-        if ((fd = get_file()) < 0)
+        MUTEX_LOCK(disk_cache_lock);
+        if ((fd = get_file()) < 0) {
+                MUTEX_UNLOCK(disk_cache_lock);
                 return FALSE;
+        }
 
         if (psfile_is_pub_registered(fd, key, &answer)) {
                 put_file(fd);
+                MUTEX_UNLOCK(disk_cache_lock);
                 return FALSE;
         }
 
         put_file(fd);
+        MUTEX_UNLOCK(disk_cache_lock);
         return answer;
 }
 
@@ -314,12 +351,16 @@ ps_get_uuid_by_pub(TCPA_STORE_PUBKEY *pub, TSS_UUID **uuid)
         int fd = -1;
 	TSS_RESULT ret;
 
-        if ((fd = get_file()) < 0)
+        MUTEX_LOCK(disk_cache_lock);
+        if ((fd = get_file()) < 0) {
+                MUTEX_UNLOCK(disk_cache_lock);
                 return TCSERR(TSS_E_INTERNAL_ERROR);
+        }
 
         ret = psfile_get_uuid_by_pub(fd, pub, uuid);
 
         put_file(fd);
+        MUTEX_UNLOCK(disk_cache_lock);
         return ret;
 }
 
@@ -329,12 +370,16 @@ ps_get_key_by_pub(TCPA_STORE_PUBKEY *pub, UINT32 *size, BYTE **key)
         int fd = -1;
 	TSS_RESULT ret;
 
-        if ((fd = get_file()) < 0)
+        MUTEX_LOCK(disk_cache_lock);
+        if ((fd = get_file()) < 0) {
+                MUTEX_UNLOCK(disk_cache_lock);
                 return TCSERR(TSS_E_INTERNAL_ERROR);
+        }
 
         ret = psfile_get_key_by_pub(fd, pub, size, key);
 
         put_file(fd);
+        MUTEX_UNLOCK(disk_cache_lock);
         return ret;
 }
 
@@ -347,21 +392,29 @@ ps_write_key(TSS_UUID *uuid, TSS_UUID *parent_uuid, BYTE *vendor_data,
 	UINT32 parent_ps;
 	UINT16 short_blob_size = (UINT16)blob_size;
 
-        if ((fd = get_file()) < 0)
+        MUTEX_LOCK(disk_cache_lock);
+
+        if ((fd = get_file()) < 0) {
+                MUTEX_UNLOCK(disk_cache_lock);
                 return TCSERR(TSS_E_INTERNAL_ERROR);
+        }
 
 	/* this case needed for PS file init. if the key file doesn't yet exist, the
 	 * psfile_get_parent_ps_type_by_uuid() call would fail. */
 	if (!memcmp(parent_uuid, &NULL_UUID, sizeof(TSS_UUID))) {
 		parent_ps = TSS_PS_TYPE_SYSTEM;
 	} else {
-		if ((rc = psfile_get_ps_type_by_uuid(fd, parent_uuid, &parent_ps)))
+		if ((rc = psfile_get_ps_type_by_uuid(fd, parent_uuid, &parent_ps))) {
+			put_file(fd);
+			MUTEX_UNLOCK(disk_cache_lock);
 			return rc;
+		}
 	}
 
         rc = psfile_write_key(fd, uuid, parent_uuid, &parent_ps, vendor_data,
 			      vendor_size, blob, short_blob_size);
 
         put_file(fd);
-        return TSS_SUCCESS;
+        MUTEX_UNLOCK(disk_cache_lock);
+        return rc;
 }

@@ -540,26 +540,38 @@ TCSP_LoadKeyByUUID_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 		if (ps_get_key_by_uuid(&pLoadKeyInfo->keyUUID, keyBlob, &blobSize))
 			return TCSERR(TSS_E_PS_KEY_NOTFOUND);
 
+		MUTEX_LOCK(mem_cache_lock);
 		if (mc_get_handles_by_uuid(&pLoadKeyInfo->parentKeyUUID, &parentTCSKeyHandle,
-					   &keyslot))
+					   &keyslot)) {
+			MUTEX_UNLOCK(mem_cache_lock);
 			return TCSERR(TCS_E_KM_LOADFAILED);
+		}
 
-		return LoadKeyByBlob_Internal(ordinal, hContext, parentTCSKeyHandle,
+		result = LoadKeyByBlob_Internal(ordinal, hContext, parentTCSKeyHandle,
 					      blobSize, keyBlob,
 					      &pLoadKeyInfo->authData,
 					      phKeyTCSI, &keyslot);
+		if (result == TSS_SUCCESS && phKeyTCSI)
+			mc_set_uuid_locked(*phKeyTCSI, &pLoadKeyInfo->keyUUID);
+		MUTEX_UNLOCK(mem_cache_lock);
+
+		return result;
 	}
 
 	/* if KeyUUID is already loaded, increment the ref count and return */
+	MUTEX_LOCK(mem_cache_lock);
 	if (mc_get_handles_by_uuid(KeyUUID, phKeyTCSI, &keyslot) == TSS_SUCCESS) {
 		if (keyslot) {
 			if (ctx_mark_key_loaded(hContext, *phKeyTCSI)) {
+				MUTEX_UNLOCK(mem_cache_lock);
 				LogError("Error marking key as loaded");
 				return TCSERR(TSS_E_INTERNAL_ERROR);
 			}
+			MUTEX_UNLOCK(mem_cache_lock);
 			return TSS_SUCCESS;
 		}
 	}
+	MUTEX_UNLOCK(mem_cache_lock);
 	/*********************************************************************
 	 *	The first thing to do in this func is setup all the info and make sure
 	 *		that we get it all from either the keyfile or the keyCache
@@ -585,10 +597,34 @@ TCSP_LoadKeyByUUID_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	 * If no errors have happend up till now, then the parent is loaded and ready for use.
 	 * The parent's TCS Handle should be in parentTCSKeyHandle.
 	 ******************************************************/
-	if ((result = LoadKeyByBlob_Internal(ordinal, hContext, parentTCSKeyHandle,
-					     keySize, keyBlob,
-					     NULL,
-					     phKeyTCSI, &keyslot))) {
+	MUTEX_LOCK(mem_cache_lock);
+	if (mc_get_handles_by_uuid(KeyUUID, phKeyTCSI, &keyslot) == TSS_SUCCESS) {
+		if (keyslot) {
+			if (ctx_mark_key_loaded(hContext, *phKeyTCSI)) {
+				MUTEX_UNLOCK(mem_cache_lock);
+				LogError("Error marking key as loaded");
+				return TCSERR(TSS_E_INTERNAL_ERROR);
+			}
+			MUTEX_UNLOCK(mem_cache_lock);
+			return TSS_SUCCESS;
+		}
+	}
+
+	result = LoadKeyByBlob_Internal(ordinal, hContext, parentTCSKeyHandle,
+					keySize, keyBlob,
+					NULL,
+					phKeyTCSI, &keyslot);
+	if (result == TSS_SUCCESS && phKeyTCSI) {
+		mc_set_uuid_locked(*phKeyTCSI, KeyUUID);
+		if (ctx_mark_key_loaded(hContext, *phKeyTCSI)) {
+			MUTEX_UNLOCK(mem_cache_lock);
+			LogError("Error marking key as loaded");
+			return TCSERR(TSS_E_INTERNAL_ERROR);
+		}
+	}
+	MUTEX_UNLOCK(mem_cache_lock);
+
+	if (result) {
 		LogDebugFn("LoadKeyByBlob_Internal returned 0x%x", result);
 		if (result == TCPA_E_AUTHFAIL && pLoadKeyInfo) {
 			BYTE blob[KEY_INFO_SIZE];

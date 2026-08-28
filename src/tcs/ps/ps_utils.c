@@ -344,7 +344,7 @@ int
 init_disk_cache(int fd)
 {
 	UINT32 num_keys = get_num_keys_in_file(fd);
-	UINT16 i;
+	UINT32 i;
 	UINT64 tmp_offset;
 	int rc = 0, offset;
 	struct key_disk_cache *tmp, *prev = NULL;
@@ -355,6 +355,18 @@ init_disk_cache(int fd)
 #endif
 
 	MUTEX_LOCK(disk_cache_lock);
+
+	while (key_disk_cache_head) {
+		tmp = key_disk_cache_head->next;
+		free(key_disk_cache_head);
+		key_disk_cache_head = tmp;
+	}
+
+	if (num_keys > 16384) {
+		LogError("PS file reports excessive number of keys (%u)", num_keys);
+		rc = -1;
+		goto err_exit;
+	}
 
 	if (num_keys == 0) {
 		key_disk_cache_head = NULL;
@@ -504,6 +516,13 @@ init_disk_cache(int fd)
 	LogDebug("%s: found %d valid key(s) on disk.\n", __FUNCTION__, valid_keys);
 
 err_exit:
+	if (rc != 0) {
+		while (key_disk_cache_head) {
+			tmp = key_disk_cache_head->next;
+			free(key_disk_cache_head);
+			key_disk_cache_head = tmp;
+		}
+	}
 	MUTEX_UNLOCK(disk_cache_lock);
 	return rc;
 }
@@ -513,17 +532,14 @@ close_disk_cache(int fd)
 {
 	struct key_disk_cache *tmp, *tmp_next;
 
-	if (key_disk_cache_head == NULL)
-		return 0;
-
 	MUTEX_LOCK(disk_cache_lock);
 	tmp = key_disk_cache_head;
-
-	do {
+	while (tmp) {
 		tmp_next = tmp->next;
 		free(tmp);
 		tmp = tmp_next;
-	} while (tmp);
+	}
+	key_disk_cache_head = NULL;
 
 	MUTEX_UNLOCK(disk_cache_lock);
 

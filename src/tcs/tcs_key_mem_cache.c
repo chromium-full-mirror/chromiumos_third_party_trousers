@@ -1088,12 +1088,9 @@ mc_find_next_ownerevict_uuid(TSS_UUID *uuid)
 }
 
 TSS_RESULT
-mc_set_uuid(TCS_KEY_HANDLE tcs_handle, TSS_UUID *uuid)
+mc_set_uuid_locked(TCS_KEY_HANDLE tcs_handle, TSS_UUID *uuid)
 {
 	struct key_mem_cache *tmp;
-	TSS_RESULT result = TCSERR(TSS_E_FAIL);
-
-	MUTEX_LOCK(mem_cache_lock);
 
 	LogDebugFn("looking for 0x%x", tcs_handle);
 
@@ -1102,10 +1099,20 @@ mc_set_uuid(TCS_KEY_HANDLE tcs_handle, TSS_UUID *uuid)
 		if (tmp->tcs_handle == tcs_handle) {
 			LogDebugFn("Handle found, re-setting UUID");
 			memcpy(&tmp->uuid, uuid, sizeof(TSS_UUID));
-			result = TSS_SUCCESS;
-			break;
+			return TSS_SUCCESS;
 		}
 	}
+
+	return TCSERR(TSS_E_FAIL);
+}
+
+TSS_RESULT
+mc_set_uuid(TCS_KEY_HANDLE tcs_handle, TSS_UUID *uuid)
+{
+	TSS_RESULT result;
+
+	MUTEX_LOCK(mem_cache_lock);
+	result = mc_set_uuid_locked(tcs_handle, uuid);
 	MUTEX_UNLOCK(mem_cache_lock);
 
 	return result;

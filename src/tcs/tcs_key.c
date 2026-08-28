@@ -56,6 +56,10 @@ add_cache_entry(TCS_CONTEXT_HANDLE hContext,
 			if (can_cache) {
 				mc_set_slot_by_handle(tcsHandle, hSlot);
 				*new = tcsHandle;
+				if (ctx_mark_key_loaded(hContext, tcsHandle)) {
+					LogError("Error marking key as loaded");
+					result = TCSERR(TSS_E_INTERNAL_ERROR);
+				}
 				goto done;
 			} else {
 				// Can't use the cache.
@@ -227,10 +231,16 @@ load_key_final(TCS_CONTEXT_HANDLE hContext,
 	       UINT32             blob_size,
 	       TPM_KEY_HANDLE     slot)
 {
-	if (*tcs_handle == NULL_TCS_HANDLE)
+	if (*tcs_handle == NULL_TCS_HANDLE) {
 		return add_cache_entry(hContext, blob, blob_size, parent_handle, slot, tcs_handle);
-	else
-		return mc_set_slot_by_handle(*tcs_handle, slot);
+	} else {
+		TSS_RESULT result = mc_set_slot_by_handle(*tcs_handle, slot);
+		if (result == TSS_SUCCESS) {
+			if (ctx_mark_key_loaded(hContext, *tcs_handle))
+				return TCSERR(TSS_E_INTERNAL_ERROR);
+		}
+		return result;
+	}
 }
 
 TSS_RESULT

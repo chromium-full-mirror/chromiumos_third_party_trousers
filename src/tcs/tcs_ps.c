@@ -164,14 +164,10 @@ key_mgr_load_by_uuid(TCS_CONTEXT_HANDLE hContext,
 {
 	TSS_RESULT result;
 
-	MUTEX_LOCK(mem_cache_lock);
-
 	result = TCSP_LoadKeyByUUID_Internal(hContext, uuid, pInfo, phKeyTCSI);
 
 	LogDebug("Key %s loaded by UUID w/ TCS handle: 0x%x",
 		result ? "NOT" : "successfully", result ? 0 : *phKeyTCSI);
-
-	MUTEX_UNLOCK(mem_cache_lock);
 
 	return result;
 }

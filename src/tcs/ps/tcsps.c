@@ -46,16 +46,16 @@
 int system_ps_fd = -1;
 MUTEX_DECLARE(disk_cache_lock);
 
-static struct flock fl;
-
 int
 get_file()
 {
 	int rc;
+	struct flock fl;
+
+	memset(&fl, 0, sizeof(fl));
+
 	/* check the global file handle first.  If it exists, lock it and return */
 	if (system_ps_fd != -1) {
-		int rc = 0;
-
 		fl.l_type = F_WRLCK;
 		if ((rc = fcntl(system_ps_fd, F_SETLKW, &fl))) {
 			LogError("failed to get system PS lock: %s", strerror(errno));
@@ -87,8 +87,11 @@ int
 put_file(int fd)
 {
 	int rc = 0;
+	struct flock fl;
+
+	memset(&fl, 0, sizeof(fl));
+
 	/* release the file lock */
-	
 	fl.l_type = F_UNLCK;
 	if ((rc = fcntl(fd, F_SETLKW, &fl))) {
 		LogError("failed to unlock system PS file: %s",
@@ -660,6 +663,12 @@ psfile_write_key(int fd,
 		}
 	}
 
+	if (fsync(fd) != 0) {
+		LogError("fsync: %s", strerror(errno));
+		rc = TCSERR(TSS_E_INTERNAL_ERROR);
+		goto done;
+	}
+
 	if ((rc = cache_key((UINT32)offset, cache_flags, uuid, parent_uuid, pub_key_size,
 					key_blob_size, vendor_size)))
                 goto done;
@@ -784,6 +793,11 @@ psfile_remove_key(int fd, struct key_disk_cache *c)
 	if ((result = write_data(fd, (void *)&num_keys, sizeof(UINT32)))) {
 		LogError("%s", __FUNCTION__);
 		return result;
+	}
+
+	if (fsync(fd) != 0) {
+		LogError("fsync: %s", strerror(errno));
+		return TCSERR(TSS_E_INTERNAL_ERROR);
 	}
 
 	return TSS_SUCCESS;

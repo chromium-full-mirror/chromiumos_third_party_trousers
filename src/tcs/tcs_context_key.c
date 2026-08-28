@@ -44,6 +44,7 @@ ctx_ref_count_keys(struct tcs_context *c)
 		free(prev);
 		prev = cur;
 	}
+	c->keys = NULL;
 }
 /* Traverse loaded keys list and if matching key handle is found return TRUE else return FALSE
  */

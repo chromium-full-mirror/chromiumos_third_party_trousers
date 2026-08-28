@@ -94,15 +94,16 @@ LoadKeyByBlob_Internal(UINT32 ord,	/* The ordinal to use, LoadKey or LoadKey2 */
 			LogDebugFn("tcs key handle exists");
 
 			newSlot = mc_get_slot_by_handle(newHandle);
-                        /* Only short-circuit if THIS context already loaded
-                         * the key; otherwise fall through to the TPM.
-                         * Prevents cross-context handle adoption. */
-                        if (newSlot && (isKeyLoaded(newSlot) == TRUE) &&
-                            ctx_has_key_loaded(hContext, newHandle)) {
+			if (newSlot && (isKeyLoaded(newSlot) == TRUE)) {
 				LogDebugFn("Don't need to reload this key.");
 				*phKeyTCSI = newHandle;
 				if (phKeyHMAC)
 					*phKeyHMAC = newSlot;
+				if (ctx_mark_key_loaded(hContext, newHandle)) {
+					LogError("Error marking key as loaded");
+					destroy_key_refs(&key);
+					return TCSERR(TSS_E_INTERNAL_ERROR);
+				}
 				destroy_key_refs(&key);
 				return TSS_SUCCESS;
 			}

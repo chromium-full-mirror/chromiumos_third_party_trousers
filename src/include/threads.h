@@ -17,6 +17,13 @@
 
 /* mutex abstractions */
 #define MUTEX_INIT(m)		pthread_mutex_init(&m, NULL)
+#define MUTEX_INIT_RECURSIVE(m) do { \
+	pthread_mutexattr_t _attr; \
+	pthread_mutexattr_init(&_attr); \
+	pthread_mutexattr_settype(&_attr, PTHREAD_MUTEX_RECURSIVE); \
+	pthread_mutex_init(&m, &_attr); \
+	pthread_mutexattr_destroy(&_attr); \
+} while (0)
 #define MUTEX_LOCK(m)		pthread_mutex_lock(&m)
 #define MUTEX_UNLOCK(m)		pthread_mutex_unlock(&m)
 #define MUTEX_DECLARE(m)	pthread_mutex_t m

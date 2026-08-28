@@ -118,6 +118,7 @@ TCS_KEY_HANDLE mc_get_handle_by_encdata(BYTE *);
 TSS_RESULT mc_update_encdata(BYTE *, BYTE *);
 TSS_RESULT mc_find_next_ownerevict_uuid(TSS_UUID *);
 TSS_RESULT mc_set_uuid(TCS_KEY_HANDLE, TSS_UUID *);
+TSS_RESULT mc_set_uuid_locked(TCS_KEY_HANDLE, TSS_UUID *);
 
 TSS_RESULT initDiskCache(void);
 void replaceEncData_PS(TSS_UUID, BYTE *encData, BYTE *newEncData);
