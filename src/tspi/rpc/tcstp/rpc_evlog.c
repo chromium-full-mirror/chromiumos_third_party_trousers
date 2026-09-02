@@ -146,13 +146,18 @@ RPC_GetPcrEventsByPcr_TP(struct host_table_entry *hte,
 
 	if (result == TSS_SUCCESS) {
 		if (getData(TCSD_PACKET_TYPE_UINT32, 0, pEventCount, 0, &hte->comm)) {
+			*pEventCount = 0;
+			*ppEvents = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 
 		if (*pEventCount > 0) {
-			if (*pEventCount > hte->comm.hdr.num_parms ||
-			    (UINT64)(*pEventCount) > (UINT64)UINT32_MAX / sizeof(TSS_PCR_EVENT)) {
+			if (hte->comm.hdr.num_parms <= 1 ||
+			    *pEventCount > hte->comm.hdr.num_parms - 1 ||
+			    *pEventCount > (UINT32)(UINT32_MAX / sizeof(TSS_PCR_EVENT))) {
+				*pEventCount = 0;
+				*ppEvents = NULL;
 				result = TSPERR(TSS_E_INTERNAL_ERROR);
 				goto done;
 			}
@@ -160,6 +165,7 @@ RPC_GetPcrEventsByPcr_TP(struct host_table_entry *hte,
 						sizeof(TSS_PCR_EVENT) * (*pEventCount));
 			if (*ppEvents == NULL) {
 				LogError("malloc of %zd bytes failed.", sizeof(TSS_PCR_EVENT) * (*pEventCount));
+				*pEventCount = 0;
 				result = TSPERR(TSS_E_OUTOFMEMORY);
 				goto done;
 			}
@@ -173,6 +179,7 @@ RPC_GetPcrEventsByPcr_TP(struct host_table_entry *hte,
 					}
 					free_tspi(hte->tspContext, *ppEvents);
 					*ppEvents = NULL;
+					*pEventCount = 0;
 					result = TSPERR(TSS_E_INTERNAL_ERROR);
 					goto done;
 				}
@@ -180,6 +187,9 @@ RPC_GetPcrEventsByPcr_TP(struct host_table_entry *hte,
 		} else {
 			*ppEvents = NULL;
 		}
+	} else {
+		*pEventCount = 0;
+		*ppEvents = NULL;
 	}
 
 done:
@@ -209,13 +219,18 @@ RPC_GetPcrEventLog_TP(struct host_table_entry *hte,
 
 	if (result == TSS_SUCCESS) {
 		if (getData(TCSD_PACKET_TYPE_UINT32, 0, pEventCount, 0, &hte->comm)) {
+			*pEventCount = 0;
+			*ppEvents = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 
 		if (*pEventCount > 0) {
-			if (*pEventCount > hte->comm.hdr.num_parms ||
-			    (UINT64)(*pEventCount) > (UINT64)UINT32_MAX / sizeof(TSS_PCR_EVENT)) {
+			if (hte->comm.hdr.num_parms <= 1 ||
+			    *pEventCount > hte->comm.hdr.num_parms - 1 ||
+			    *pEventCount > (UINT32)(UINT32_MAX / sizeof(TSS_PCR_EVENT))) {
+				*pEventCount = 0;
+				*ppEvents = NULL;
 				result = TSPERR(TSS_E_INTERNAL_ERROR);
 				goto done;
 			}
@@ -224,6 +239,7 @@ RPC_GetPcrEventLog_TP(struct host_table_entry *hte,
 			if (*ppEvents == NULL) {
 				LogError("malloc of %zd bytes failed.",
 					 sizeof(TSS_PCR_EVENT) * (*pEventCount));
+				*pEventCount = 0;
 				result = TSPERR(TSS_E_OUTOFMEMORY);
 				goto done;
 			}
@@ -237,6 +253,7 @@ RPC_GetPcrEventLog_TP(struct host_table_entry *hte,
 					}
 					free_tspi(hte->tspContext, *ppEvents);
 					*ppEvents = NULL;
+					*pEventCount = 0;
 					result = TSPERR(TSS_E_INTERNAL_ERROR);
 					goto done;
 				}
@@ -244,6 +261,9 @@ RPC_GetPcrEventLog_TP(struct host_table_entry *hte,
 		} else {
 			*ppEvents = NULL;
 		}
+	} else {
+		*pEventCount = 0;
+		*ppEvents = NULL;
 	}
 
 done:

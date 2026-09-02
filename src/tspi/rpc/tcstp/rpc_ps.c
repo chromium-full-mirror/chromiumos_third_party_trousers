@@ -167,13 +167,18 @@ RPC_EnumRegisteredKeys_TP(struct host_table_entry *hte,
 	if (result == TSS_SUCCESS) {
 		i = 0;
 		if (getData(TCSD_PACKET_TYPE_UINT32, i++, pcKeyHierarchySize, 0, &hte->comm)) {
+			*pcKeyHierarchySize = 0;
+			*ppKeyHierarchy = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 
 		if (*pcKeyHierarchySize > 0) {
-			if (*pcKeyHierarchySize > hte->comm.hdr.num_parms ||
-			    (UINT64)(*pcKeyHierarchySize) > (UINT64)UINT32_MAX / sizeof(TSS_KM_KEYINFO)) {
+			if (hte->comm.hdr.num_parms <= 1 ||
+			    *pcKeyHierarchySize > hte->comm.hdr.num_parms - 1 ||
+			    *pcKeyHierarchySize > (UINT32)(UINT32_MAX / sizeof(TSS_KM_KEYINFO))) {
+				*pcKeyHierarchySize = 0;
+				*ppKeyHierarchy = NULL;
 				result = TSPERR(TSS_E_INTERNAL_ERROR);
 				goto done;
 			}
@@ -181,6 +186,7 @@ RPC_EnumRegisteredKeys_TP(struct host_table_entry *hte,
 			if (*ppKeyHierarchy == NULL) {
 				LogError("malloc of %zu bytes failed.", (*pcKeyHierarchySize) *
 					 sizeof(TSS_KM_KEYINFO));
+				*pcKeyHierarchySize = 0;
 				result = TSPERR(TSS_E_OUTOFMEMORY);
 				goto done;
 			}
@@ -191,6 +197,7 @@ RPC_EnumRegisteredKeys_TP(struct host_table_entry *hte,
 						free((*ppKeyHierarchy)[k].rgbVendorData);
 					free(*ppKeyHierarchy);
 					*ppKeyHierarchy = NULL;
+					*pcKeyHierarchySize = 0;
 					result = TSPERR(TSS_E_INTERNAL_ERROR);
 					goto done;
 				}
@@ -198,6 +205,9 @@ RPC_EnumRegisteredKeys_TP(struct host_table_entry *hte,
 		} else {
 			*ppKeyHierarchy = NULL;
 		}
+	} else {
+		*pcKeyHierarchySize = 0;
+		*ppKeyHierarchy = NULL;
 	}
 
 done:
@@ -235,13 +245,18 @@ RPC_EnumRegisteredKeys2_TP(struct host_table_entry *hte,
 	if (result == TSS_SUCCESS) {
 		i = 0;
 		if (getData(TCSD_PACKET_TYPE_UINT32, i++, pcKeyHierarchySize, 0, &hte->comm)) {
+			*pcKeyHierarchySize = 0;
+			*ppKeyHierarchy = NULL;
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
 
 		if (*pcKeyHierarchySize > 0) {
-			if (*pcKeyHierarchySize > hte->comm.hdr.num_parms ||
-			    (UINT64)(*pcKeyHierarchySize) > (UINT64)UINT32_MAX / sizeof(TSS_KM_KEYINFO2)) {
+			if (hte->comm.hdr.num_parms <= 1 ||
+			    *pcKeyHierarchySize > hte->comm.hdr.num_parms - 1 ||
+			    *pcKeyHierarchySize > (UINT32)(UINT32_MAX / sizeof(TSS_KM_KEYINFO2))) {
+				*pcKeyHierarchySize = 0;
+				*ppKeyHierarchy = NULL;
 				result = TSPERR(TSS_E_INTERNAL_ERROR);
 				goto done;
 			}
@@ -249,6 +264,7 @@ RPC_EnumRegisteredKeys2_TP(struct host_table_entry *hte,
 			if (*ppKeyHierarchy == NULL) {
 				LogError("malloc of %zu bytes failed.", (*pcKeyHierarchySize) *
 					 sizeof(TSS_KM_KEYINFO2));
+				*pcKeyHierarchySize = 0;
 				result = TSPERR(TSS_E_OUTOFMEMORY);
 				goto done;
 			}
@@ -259,6 +275,7 @@ RPC_EnumRegisteredKeys2_TP(struct host_table_entry *hte,
 						free((*ppKeyHierarchy)[k].rgbVendorData);
 					free(*ppKeyHierarchy);
 					*ppKeyHierarchy = NULL;
+					*pcKeyHierarchySize = 0;
 					result = TSPERR(TSS_E_INTERNAL_ERROR);
 					goto done;
 				}
@@ -266,6 +283,9 @@ RPC_EnumRegisteredKeys2_TP(struct host_table_entry *hte,
 		} else {
 			*ppKeyHierarchy = NULL;
 		}
+	} else {
+		*pcKeyHierarchySize = 0;
+		*ppKeyHierarchy = NULL;
 	}
 
 done:
