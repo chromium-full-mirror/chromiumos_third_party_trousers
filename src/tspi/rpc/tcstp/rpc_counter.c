@@ -73,7 +73,7 @@ RPC_CreateCounter_TP(struct host_table_entry* hte,
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	if (setData(TCSD_PACKET_TYPE_UINT32, 1, &LabelSize, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
-	if (setData(TCSD_PACKET_TYPE_PBYTE, 2, &pLabel, LabelSize, &hte->comm))
+	if (setData(TCSD_PACKET_TYPE_PBYTE, 2, pLabel, LabelSize, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);
 	if (setData(TCSD_PACKET_TYPE_ENCAUTH, 3, &CounterAuth, 0, &hte->comm))
 		return TSPERR(TSS_E_INTERNAL_ERROR);

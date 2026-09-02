@@ -86,12 +86,15 @@ tcs_wrap_CreateCounter(struct tcsd_thread_data *data)
 	if (getData(TCSD_PACKET_TYPE_UINT32, 1, &LabelSize, 0, &data->comm))
 		return TCSERR(TSS_E_INTERNAL_ERROR);
 
+	if (LabelSize != 4)
+		return TCSERR(TSS_E_BAD_PARAMETER);
+
 	if ((pLabel = calloc(1, LabelSize)) == NULL) {
 		LogError("malloc of %u bytes failed.", LabelSize);
 		return TCSERR(TSS_E_OUTOFMEMORY);
 	}
 
-	if (getData(TCSD_PACKET_TYPE_PBYTE, 2, &pLabel, LabelSize, &data->comm)) {
+	if (getData(TCSD_PACKET_TYPE_PBYTE, 2, pLabel, LabelSize, &data->comm)) {
 		free(pLabel);
 		return TCSERR(TSS_E_INTERNAL_ERROR);
 	}
