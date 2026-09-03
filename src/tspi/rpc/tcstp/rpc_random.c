@@ -31,6 +31,7 @@ RPC_GetRandom_TP(struct host_table_entry *hte,
 		  BYTE ** randomBytes)	/* out */
 {
 	TSS_RESULT result;
+	UINT32 origRequested = bytesRequested;
 
 	initData(&hte->comm, 2);
 	hte->comm.hdr.u.ordinal = TCSD_ORD_GETRANDOM;
@@ -50,6 +51,21 @@ RPC_GetRandom_TP(struct host_table_entry *hte,
 
 	if (result == TSS_SUCCESS) {
 		if (getData(TCSD_PACKET_TYPE_UINT32, 0, &bytesRequested, 0, &hte->comm)) {
+			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			goto done;
+		}
+		/* The Tspi_TPM_GetRandom() API has no size out-parameter, so the
+		 * caller will read exactly origRequested bytes, and tcsd returns
+		 * the exact requested count on success. Require an exact match
+		 * and verify that the received packet carries enough payload
+		 * bytes before getData() copies them out of the receive buffer. */
+		if (bytesRequested != origRequested) {
+			result = TSPERR(TSS_E_INTERNAL_ERROR);
+			goto done;
+		}
+		if (hte->comm.hdr.parm_offset > hte->comm.hdr.packet_size ||
+		    bytesRequested > hte->comm.hdr.packet_size -
+				     hte->comm.hdr.parm_offset) {
 			result = TSPERR(TSS_E_INTERNAL_ERROR);
 			goto done;
 		}
