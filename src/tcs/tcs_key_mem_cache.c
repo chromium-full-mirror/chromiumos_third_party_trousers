@@ -230,19 +230,29 @@ mc_get_handles_by_uuid(TSS_UUID *uuid, TCS_KEY_HANDLE *tcsHandle, TCPA_KEY_HANDL
 	return TCSERR(TSS_E_FAIL);
 }
 
+/* Whether the cache entry's key was loaded from the encData blob. */
+static TSS_BOOL
+encdata_matches(struct key_mem_cache *tmp, UINT32 encDataSize, BYTE *encData)
+{
+	return tmp->blob && tmp->blob->encData &&
+	       tmp->blob->encSize == encDataSize &&
+	       !memcmp(tmp->blob->encData, encData, encDataSize);
+}
+
 TCS_KEY_HANDLE
-mc_get_handle_by_encdata(BYTE *encData)
+mc_get_handle_by_encdata(UINT32 encDataSize, BYTE *encData)
 {
 	struct key_mem_cache *tmp;
 	TCS_KEY_HANDLE ret;
+
+	if (!encData || encDataSize == 0)
+		return 0;
 
 	MUTEX_LOCK(mem_cache_lock);
 
 	for (tmp = key_mem_cache_head; tmp; tmp = tmp->next) {
 		LogDebugFn("TCSD mem_cached handle: 0x%x", tmp->tcs_handle);
-		if (!tmp->blob || tmp->blob->encSize == 0)
-			continue;
-		if (!memcmp(tmp->blob->encData, encData, tmp->blob->encSize)) {
+		if (encdata_matches(tmp, encDataSize, encData)) {
 			ret = tmp->tcs_handle;
 			MUTEX_UNLOCK(mem_cache_lock);
 			return ret;
@@ -252,36 +262,83 @@ mc_get_handle_by_encdata(BYTE *encData)
 	return 0;
 }
 
+/*
+ * Called after TPM_ChangeAuth has re-encrypted a key blob. For each cached
+ * key that was loaded from encData, flush it from the TPM so the copy loaded
+ * with the old authorization can't be used, and replace its blob with
+ * newEncData. The cache entries and their TCS handles are kept, but the key
+ * has to be loaded again before it can be used. This is all done under
+ * mem_cache_lock so the entries can't be freed part way through. If memory
+ * runs out, the keys are still flushed but none of the blobs are replaced.
+ */
 TSS_RESULT
-mc_update_encdata(BYTE *encData, BYTE *newEncData)
+mc_update_encdata(UINT32 encDataSize, BYTE *encData,
+		  UINT32 newEncDataSize, BYTE *newEncData)
 {
 	struct key_mem_cache *tmp;
-	BYTE *tmp_enc_data;
+	BYTE **copies = NULL;
+	UINT32 matches = 0, i;
+	TSS_RESULT result = TSS_SUCCESS;
+
+	if (!encData || !newEncData || encDataSize == 0 ||
+	    newEncDataSize != encDataSize)
+		return TCSERR(TSS_E_INTERNAL_ERROR);
 
 	MUTEX_LOCK(mem_cache_lock);
 
 	for (tmp = key_mem_cache_head; tmp; tmp = tmp->next) {
 		LogDebugFn("TCSD mem_cached handle: 0x%x", tmp->tcs_handle);
-		if (!tmp->blob || tmp->blob->encSize == 0)
+		if (!encdata_matches(tmp, encDataSize, encData))
 			continue;
-		if (!memcmp(tmp->blob->encData, encData, tmp->blob->encSize)) {
-			tmp_enc_data = (BYTE *)malloc(tmp->blob->encSize);
-			if (tmp_enc_data == NULL) {
-				LogError("malloc of %u bytes failed.", tmp->blob->encSize);
-				MUTEX_UNLOCK(mem_cache_lock);
-				return TCSERR(TSS_E_OUTOFMEMORY);
-			}
 
-			memcpy(tmp_enc_data, newEncData, tmp->blob->encSize);
-			free(tmp->blob->encData);
-			tmp->blob->encData = tmp_enc_data;
-			MUTEX_UNLOCK(mem_cache_lock);
-			return TSS_SUCCESS;
+		matches++;
+		if (tmp->tpm_handle != NULL_TPM_HANDLE) {
+			if (internal_EvictByKeySlot(tmp->tpm_handle))
+				LogDebugFn("Couldn't evict TPM handle 0x%x",
+					   tmp->tpm_handle);
+			tmp->tpm_handle = NULL_TPM_HANDLE;
+			tmp->time_stamp = 0;
 		}
 	}
+
+	if (matches == 0) {
+		LogDebugFn("No cached key uses this encdata");
+		goto done;
+	}
+
+	/* Allocate every copy first, so either all blobs are replaced or none. */
+	copies = calloc(matches, sizeof(BYTE *));
+	if (copies == NULL) {
+		LogError("malloc of %zd bytes failed.", matches * sizeof(BYTE *));
+		result = TCSERR(TSS_E_OUTOFMEMORY);
+		goto done;
+	}
+	for (i = 0; i < matches; i++) {
+		copies[i] = malloc(encDataSize);
+		if (copies[i] == NULL) {
+			LogError("malloc of %u bytes failed.", encDataSize);
+			result = TCSERR(TSS_E_OUTOFMEMORY);
+			goto done;
+		}
+		memcpy(copies[i], newEncData, encDataSize);
+	}
+
+	i = 0;
+	for (tmp = key_mem_cache_head; tmp && i < matches; tmp = tmp->next) {
+		if (!encdata_matches(tmp, encDataSize, encData))
+			continue;
+		free(tmp->blob->encData);
+		tmp->blob->encData = copies[i];
+		copies[i++] = NULL;
+	}
+done:
+	if (copies) {
+		for (i = 0; i < matches; i++)
+			free(copies[i]);
+		free(copies);
+	}
 	MUTEX_UNLOCK(mem_cache_lock);
-	LogError("Couldn't find requested encdata in mem cache");
-	return TCSERR(TSS_E_INTERNAL_ERROR);
+	return result;
 }
 
 /*

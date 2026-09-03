@@ -84,12 +84,17 @@ TCSP_ChangeAuth_Internal(TCS_CONTEXT_HANDLE contextHandle,	/* in */
 		 */
 		if (entityType == TCPA_ET_KEYHANDLE || entityType == TCPA_ET_KEY) {
 			LogDebug("entity type is a key. Check if mem cache needs updating...");
-			tcsKeyHandleToEvict = mc_get_handle_by_encdata(encData);
+			tcsKeyHandleToEvict = mc_get_handle_by_encdata(encDataSize, encData);
 			LogDebug("tcsKeyHandle being evicted is %.8X", tcsKeyHandleToEvict);
-			/*---	If it was found in knowledge, replace it */
+			/*---	If it was found in knowledge, evict it and replace it */
 			if (tcsKeyHandleToEvict != 0) {
-				internal_EvictByKeySlot(keySlot);
-				mc_update_encdata(encData, *outData);
+				if ((result = mc_update_encdata(encDataSize, encData,
+								*outDataSize, *outData))) {
+					free(*outData);
+					*outData = NULL;
+					*outDataSize = 0;
+					goto done;
+				}
 			}
 
 		}
@@ -354,11 +359,17 @@ TCSP_ChangeAuthAsymFinish_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 		 */
 		if (entityType == TCPA_ET_KEYHANDLE ||
 		    entityType == TCPA_ET_KEY) {
-			tcsKeyHandleToEvict = mc_get_handle_by_encdata(encDataIn);
-			/* If it was found in mem cache, replace it */
+			tcsKeyHandleToEvict = mc_get_handle_by_encdata(encDataSizeIn, encDataIn);
+			/* If it was found in mem cache, evict it and replace it */
 			if (tcsKeyHandleToEvict != 0) {
-				key_mgr_evict(hContext, tcsKeyHandleToEvict);
-				mc_update_encdata(encDataIn, *encDataOut);
+				if ((result = mc_update_encdata(encDataSizeIn, encDataIn,
+								*encDataSizeOut,
+								*encDataOut))) {
+					free(*encDataOut);
+					*encDataOut = NULL;
+					*encDataSizeOut = 0;
+					goto done;
+				}
 			}
 		}
 	}
