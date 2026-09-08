@@ -457,7 +457,8 @@ init_disk_cache(int fd)
 			}
 
 			tmp_offset = 0;
-			if ((rc = UnloadBlob_TSS_KEY(&tmp_offset, srk_blob, &srk_key)))
+			memset(&srk_key, 0, sizeof(srk_key));
+			if ((rc = UnloadBlob_TSS_KEY_s(&tmp_offset, srk_blob, (UINT64)tmp->blob_size, &srk_key)))
 				goto err_exit;
 			/* add to the mem cache */
 			if ((rc = mc_add_entry_init(SRK_TPM_HANDLE, SRK_TPM_HANDLE, &srk_key,

@@ -44,7 +44,7 @@ get_current_version(TPM_VERSION *version)
 	result = TCSP_GetCapability_Internal(InternalContext, capArea, 0, NULL, &respSize, &resp);
 	if (result == TSS_SUCCESS) {
 		offset = sizeof(UINT16); // XXX hack
-		UnloadBlob_VERSION(&offset, resp, version);
+		result = UnloadBlob_VERSION_s(&offset, resp, (UINT64)respSize, version);
 		free(resp);
 	} else if (result == TCPA_E_BAD_MODE) {
 		/* if the TPM doesn't understand VERSION_VAL, try the 1.1 way */
@@ -53,7 +53,7 @@ get_current_version(TPM_VERSION *version)
 						     &resp);
 		if (result == TSS_SUCCESS) {
 			offset = 0;
-			UnloadBlob_VERSION(&offset, resp, version);
+			result = UnloadBlob_VERSION_s(&offset, resp, (UINT64)respSize, version);
 			free(resp);
 		}
 	}

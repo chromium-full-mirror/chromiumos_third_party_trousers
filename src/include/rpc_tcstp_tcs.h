@@ -389,10 +389,12 @@ void UnloadBlob_Auth_Special(UINT64 *, BYTE *, TPM_AUTH *);
 void LoadBlob_KM_KEYINFO(UINT64 *, BYTE *, TSS_KM_KEYINFO *);
 void LoadBlob_KM_KEYINFO2(UINT64 *, BYTE *, TSS_KM_KEYINFO2 *);
 void UnloadBlob_KM_KEYINFO(UINT64 *, BYTE *, TSS_KM_KEYINFO *);
+TSS_RESULT UnloadBlob_KM_KEYINFO_s(UINT64 *, BYTE *, UINT64, TSS_KM_KEYINFO *);
 void UnloadBlob_KM_KEYINFO2(UINT64 *, BYTE *, TSS_KM_KEYINFO2 *);
 void LoadBlob_LOADKEY_INFO(UINT64 *, BYTE *, TCS_LOADKEY_INFO *);
 void UnloadBlob_LOADKEY_INFO(UINT64 *, BYTE *, TCS_LOADKEY_INFO *);
 void LoadBlob_PCR_EVENT(UINT64 *, BYTE *, TSS_PCR_EVENT *);
+TSS_RESULT UnloadBlob_PCR_EVENT_s(UINT64 *, BYTE *, UINT64, TSS_PCR_EVENT *);
 TSS_RESULT UnloadBlob_PCR_EVENT(UINT64 *, BYTE *, TSS_PCR_EVENT *);
 int setData(TCSD_PACKET_TYPE, unsigned int, void *, int, struct tcsd_comm_data *);
 UINT32 getData(TCSD_PACKET_TYPE, unsigned int, void *, int, struct tcsd_comm_data *);
@@ -404,5 +406,3 @@ TSS_RESULT getTCSDPacket(struct tcsd_thread_data *);
 MUTEX_DECLARE_EXTERN(tcsp_lock);
 
 #endif
-
-

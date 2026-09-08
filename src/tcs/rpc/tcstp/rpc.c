@@ -305,21 +305,34 @@ getData(TCSD_PACKET_TYPE dataType,
 					((TCPA_ENCAUTH *) theData)->authdata);
 			break;
 		case TCSD_PACKET_TYPE_VERSION:
+		{
+			TSS_RESULT result;
+
 			if (old_offset + sizeof(TPM_VERSION) > comm->hdr.packet_size)
 				return TCSERR(TSS_E_INTERNAL_ERROR);
 
-			UnloadBlob_VERSION(&offset, comm->buf, ((TPM_VERSION *) theData));
+			if ((result = UnloadBlob_VERSION_s(&offset, comm->buf, (UINT64)comm->hdr.packet_size,
+							   ((TPM_VERSION *) theData))))
+				return result;
 			break;
+		}
 #ifdef TSS_BUILD_PS
 		case TCSD_PACKET_TYPE_KM_KEYINFO:
-			UnloadBlob_KM_KEYINFO(&old_offset, comm->buf, NULL);
+		{
+			TSS_RESULT result;
+
+			if ((result = UnloadBlob_KM_KEYINFO_s(&old_offset, comm->buf, (UINT64)comm->hdr.packet_size, NULL)))
+				return result;
 
 			if (old_offset > comm->hdr.packet_size)
 				return TCSERR(TSS_E_INTERNAL_ERROR);
 
 			old_offset = offset;
-			UnloadBlob_KM_KEYINFO(&offset, comm->buf, ((TSS_KM_KEYINFO *)theData));
+			if ((result = UnloadBlob_KM_KEYINFO_s(&offset, comm->buf, (UINT64)comm->hdr.packet_size,
+							     ((TSS_KM_KEYINFO *)theData))))
+				return result;
 			break;
+		}
 		case TCSD_PACKET_TYPE_LOADKEY_INFO:
 			UnloadBlob_LOADKEY_INFO(&old_offset, comm->buf, NULL);
 
@@ -341,13 +354,14 @@ getData(TCSD_PACKET_TYPE dataType,
 		{
 			TSS_RESULT result;
 
-			(void)UnloadBlob_PCR_EVENT(&old_offset, comm->buf, NULL);
+			if ((result = UnloadBlob_PCR_EVENT_s(&old_offset, comm->buf, (UINT64)comm->hdr.packet_size, NULL)))
+				return result;
 
 			if (old_offset > comm->hdr.packet_size)
 				return TCSERR(TSS_E_INTERNAL_ERROR);
 
 			old_offset = offset;
-			if ((result = UnloadBlob_PCR_EVENT(&offset, comm->buf,
+			if ((result = UnloadBlob_PCR_EVENT_s(&offset, comm->buf, (UINT64)comm->hdr.packet_size,
 							   ((TSS_PCR_EVENT *)theData))))
 				return result;
 			break;

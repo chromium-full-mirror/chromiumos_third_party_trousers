@@ -65,6 +65,9 @@ event_log_final()
 	struct event_wrapper *cur, *next;
 	UINT32 i;
 
+	if (!tcs_event_log)
+		return TSS_SUCCESS;
+
 	MUTEX_LOCK(tcs_event_log->lock);
 
 	for (i = 0; i < tpm_metrics.num_pcrs; i++) {
@@ -82,6 +85,7 @@ event_log_final()
 
 	free(tcs_event_log->lists);
 	free(tcs_event_log);
+	tcs_event_log = NULL;
 
 	return TSS_SUCCESS;
 }

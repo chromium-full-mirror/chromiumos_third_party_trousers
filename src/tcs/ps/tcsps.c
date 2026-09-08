@@ -188,7 +188,7 @@ psfile_get_key_by_uuid(int fd, TSS_UUID *uuid, BYTE *ret_buffer, UINT16 *ret_buf
                         return rc;
                 }
 		*ret_buffer_size = tmp->blob_size;
-		LogDebugUnrollKey(ret_buffer);
+		LogDebugUnrollKey(ret_buffer, tmp->blob_size);
                 MUTEX_UNLOCK(disk_cache_lock);
                 return TSS_SUCCESS;
         }
@@ -573,7 +573,8 @@ psfile_write_key(int fd,
 
 	/* Unload the blob to get the public key */
 	offset = 0;
-	if ((rc = UnloadBlob_TSS_KEY(&offset, key_blob, &key)))
+	memset(&key, 0, sizeof(key));
+	if ((rc = UnloadBlob_TSS_KEY_s(&offset, key_blob, (UINT64)key_blob_size, &key)))
 		return rc;
 
 	pub_key_size = key.pubKey.keyLength;

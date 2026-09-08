@@ -74,15 +74,18 @@ LoadKeyByBlob_Internal(UINT32 ord,	/* The ordinal to use, LoadKey or LoadKey2 */
 		return result;
 
 	LogDebugFn("Enter");
-	LogDebugUnrollKey(rgbWrappedKeyBlob);
-
-	if ((result = get_slot(hContext, hUnwrappingKey, &parentSlot)))
-		return result;
 
 	offset = 0;
 	memset(&key, 0, sizeof(TSS_KEY));
-	if ((result = UnloadBlob_TSS_KEY(&offset, rgbWrappedKeyBlob, &key)))
+	if ((result = UnloadBlob_TSS_KEY_s(&offset, rgbWrappedKeyBlob, (UINT64)cWrappedKeyBlobSize, &key)))
 		return result;
+
+	LogDebugKey(key);
+
+	if ((result = get_slot(hContext, hUnwrappingKey, &parentSlot))) {
+		destroy_key_refs(&key);
+		return result;
+	}
 
 	if (!pAuth) {
 		LogDebugFn("Checking if LoadKeyByBlob can be avoided by using existing key");
@@ -100,6 +103,7 @@ LoadKeyByBlob_Internal(UINT32 ord,	/* The ordinal to use, LoadKey or LoadKey2 */
 				*phKeyTCSI = newHandle;
 				if (phKeyHMAC)
 					*phKeyHMAC = newSlot;
+				destroy_key_refs(&key);
 				return TSS_SUCCESS;
 			}
 		}
@@ -137,7 +141,7 @@ LoadKeyByBlob_Internal(UINT32 ord,	/* The ordinal to use, LoadKey or LoadKey2 */
 		goto error;
 
 	if ((result = load_key_final(hContext, hUnwrappingKey, &newHandle, rgbWrappedKeyBlob,
-				     newSlot)))
+				     cWrappedKeyBlobSize, newSlot)))
 		goto error;
 
 	/* Setup the outHandles */
@@ -147,6 +151,7 @@ LoadKeyByBlob_Internal(UINT32 ord,	/* The ordinal to use, LoadKey or LoadKey2 */
 
 	LogDebugFn("Key handles for loadKeyByBlob slot:%.8X tcshandle:%.8X", newSlot, newHandle);
 error:
+	destroy_key_refs(&key);
 	auth_mgr_release_auth(pAuth, NULL, hContext);
 	return result;
 }

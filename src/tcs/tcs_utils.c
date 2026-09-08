@@ -1,4 +1,3 @@
-
 /*
  * Licensed Materials - Property of IBM
  *
@@ -152,6 +151,19 @@ UnloadBlob_UINT64(UINT64 *offset, UINT64 * out, BYTE * blob)
 	*offset += sizeof(UINT64);
 }
 
+TSS_RESULT
+UnloadBlob_UINT64_s(UINT64 *offset, UINT64 * out, BYTE * blob, UINT64 capacity)
+{
+	if (!offset || !blob)
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	if (*offset > capacity || sizeof(UINT64) > capacity - *offset)
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	if (out)
+		*out = Decode_UINT64(&blob[*offset]);
+	*offset += sizeof(UINT64);
+	return TSS_SUCCESS;
+}
+
 void
 UnloadBlob_UINT32(UINT64 *offset, UINT32 * out, BYTE * blob)
 {
@@ -160,12 +172,38 @@ UnloadBlob_UINT32(UINT64 *offset, UINT32 * out, BYTE * blob)
 	*offset += sizeof(UINT32);
 }
 
+TSS_RESULT
+UnloadBlob_UINT32_s(UINT64 *offset, UINT32 * out, BYTE * blob, UINT64 capacity)
+{
+	if (!offset || !blob)
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	if (*offset > capacity || sizeof(UINT32) > capacity - *offset)
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	if (out)
+		*out = Decode_UINT32(&blob[*offset]);
+	*offset += sizeof(UINT32);
+	return TSS_SUCCESS;
+}
+
 void
 UnloadBlob_UINT16(UINT64 *offset, UINT16 * out, BYTE * blob)
 {
 	if (out)
 		*out = Decode_UINT16(&blob[*offset]);
 	*offset += sizeof(UINT16);
+}
+
+TSS_RESULT
+UnloadBlob_UINT16_s(UINT64 *offset, UINT16 * out, BYTE * blob, UINT64 capacity)
+{
+	if (!offset || !blob)
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	if (*offset > capacity || sizeof(UINT16) > capacity - *offset)
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	if (out)
+		*out = Decode_UINT16(&blob[*offset]);
+	*offset += sizeof(UINT16);
+	return TSS_SUCCESS;
 }
 
 void
@@ -184,6 +222,19 @@ UnloadBlob_BYTE(UINT64 *offset, BYTE * dataOut, BYTE * blob)
 	(*offset)++;
 }
 
+TSS_RESULT
+UnloadBlob_BYTE_s(UINT64 *offset, BYTE * dataOut, BYTE * blob, UINT64 capacity)
+{
+	if (!offset || !blob)
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	if (*offset >= capacity)
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	if (dataOut)
+		*dataOut = blob[*offset];
+	(*offset)++;
+	return TSS_SUCCESS;
+}
+
 void
 LoadBlob_BOOL(UINT64 *offset, TSS_BOOL data, BYTE * blob)
 {
@@ -200,6 +251,12 @@ UnloadBlob_BOOL(UINT64 *offset, TSS_BOOL *dataOut, BYTE * blob)
 	(*offset)++;
 }
 
+TSS_RESULT
+UnloadBlob_BOOL_s(UINT64 *offset, TSS_BOOL *dataOut, BYTE * blob, UINT64 capacity)
+{
+	return UnloadBlob_BYTE_s(offset, (BYTE *)dataOut, blob, capacity);
+}
+
 void
 LoadBlob(UINT64 *offset, UINT32 size, BYTE *container, BYTE *object)
 {
@@ -214,6 +271,21 @@ UnloadBlob(UINT64 *offset, UINT32 size, BYTE *container, BYTE *object)
 	if (object)
 		memcpy(object, &container[*offset], size);
 	(*offset) += (UINT64) size;
+}
+
+TSS_RESULT
+UnloadBlob_s(UINT64 *offset, UINT32 size, BYTE *container, UINT64 capacity, BYTE *object)
+{
+	if (!offset || !container)
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	if (size == 0)
+		return TSS_SUCCESS;
+	if (*offset > capacity || (UINT64)size > capacity - *offset)
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	if (object)
+		memcpy(object, &container[*offset], size);
+	(*offset) += (UINT64)size;
+	return TSS_SUCCESS;
 }
 
 void
@@ -291,15 +363,13 @@ UnloadBlob_Auth(UINT64 *offset, BYTE * blob, TPM_AUTH * auth)
 void
 UnloadBlob_VERSION(UINT64 *offset, BYTE *blob, TPM_VERSION *out)
 {
-	if (!out) {
-		*offset += (sizeof(BYTE) * 4);
-		return;
-	}
+	(void)UnloadBlob_VERSION_s(offset, blob, UINT64_MAX, out);
+}
 
-	UnloadBlob_BYTE(offset, &out->major, blob);
-	UnloadBlob_BYTE(offset, &out->minor, blob);
-	UnloadBlob_BYTE(offset, &out->revMajor, blob);
-	UnloadBlob_BYTE(offset, &out->revMinor, blob);
+TSS_RESULT
+UnloadBlob_VERSION_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TPM_VERSION *out)
+{
+	return UnloadBlob_TCPA_VERSION_s(offset, blob, capacity, (TCPA_VERSION *)out);
 }
 
 void
@@ -314,15 +384,34 @@ LoadBlob_VERSION(UINT64 *offset, BYTE *blob, TPM_VERSION *ver)
 void
 UnloadBlob_TCPA_VERSION(UINT64 *offset, BYTE *blob, TCPA_VERSION *out)
 {
+	(void)UnloadBlob_TCPA_VERSION_s(offset, blob, UINT64_MAX, out);
+}
+
+TSS_RESULT
+UnloadBlob_TCPA_VERSION_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_VERSION *out)
+{
+	TSS_RESULT rc;
+
+	if (!offset || !blob)
+		return TCSERR(TSS_E_BAD_PARAMETER);
+
 	if (!out) {
+		if (*offset > capacity || (sizeof(BYTE) * 4) > capacity - *offset)
+			return TCSERR(TSS_E_BAD_PARAMETER);
 		*offset += (sizeof(BYTE) * 4);
-		return;
+		return TSS_SUCCESS;
 	}
 
-	UnloadBlob_BYTE(offset, &out->major, blob);
-	UnloadBlob_BYTE(offset, &out->minor, blob);
-	UnloadBlob_BYTE(offset, &out->revMajor, blob);
-	UnloadBlob_BYTE(offset, &out->revMinor, blob);
+	if ((rc = UnloadBlob_BYTE_s(offset, &out->major, blob, capacity)))
+		return rc;
+	if ((rc = UnloadBlob_BYTE_s(offset, &out->minor, blob, capacity)))
+		return rc;
+	if ((rc = UnloadBlob_BYTE_s(offset, &out->revMajor, blob, capacity)))
+		return rc;
+	if ((rc = UnloadBlob_BYTE_s(offset, &out->revMinor, blob, capacity)))
+		return rc;
+
+	return TSS_SUCCESS;
 }
 
 void
@@ -335,26 +424,54 @@ LoadBlob_TCPA_VERSION(UINT64 *offset, BYTE *blob, TCPA_VERSION *ver)
 }
 
 TSS_RESULT
-UnloadBlob_KEY_PARMS(UINT64 *offset, BYTE *blob, TCPA_KEY_PARMS *keyParms)
+UnloadBlob_KEY_PARMS_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_KEY_PARMS *keyParms)
 {
+	TSS_RESULT rc;
+
 	if (!keyParms) {
 		UINT32 parmSize;
 
-		UnloadBlob_UINT32(offset, NULL, blob);
-		UnloadBlob_UINT16(offset, NULL, blob);
-		UnloadBlob_UINT16(offset, NULL, blob);
-		UnloadBlob_UINT32(offset, &parmSize, blob);
+		if ((rc = UnloadBlob_UINT32_s(offset, NULL, blob, capacity)))
+			return rc;
+		if ((rc = UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return rc;
+		if ((rc = UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return rc;
+		if ((rc = UnloadBlob_UINT32_s(offset, &parmSize, blob, capacity)))
+			return rc;
 
-		if (parmSize > 0)
-			UnloadBlob(offset, parmSize, blob, NULL);
+		if (parmSize > 4096)
+			return TCSERR(TSS_E_BAD_PARAMETER);
+		if (parmSize > 0) {
+			if ((rc = UnloadBlob_s(offset, parmSize, blob, capacity, NULL)))
+				return rc;
+		}
 
 		return TSS_SUCCESS;
 	}
 
-	UnloadBlob_UINT32(offset, &keyParms->algorithmID, blob);
-	UnloadBlob_UINT16(offset, &keyParms->encScheme, blob);
-	UnloadBlob_UINT16(offset, &keyParms->sigScheme, blob);
-	UnloadBlob_UINT32(offset, &keyParms->parmSize, blob);
+	keyParms->parms = NULL;
+	keyParms->parmSize = 0;
+
+	if ((rc = UnloadBlob_UINT32_s(offset, &keyParms->algorithmID, blob, capacity)))
+		return rc;
+	if ((rc = UnloadBlob_UINT16_s(offset, &keyParms->encScheme, blob, capacity)))
+		return rc;
+	if ((rc = UnloadBlob_UINT16_s(offset, &keyParms->sigScheme, blob, capacity)))
+		return rc;
+	if ((rc = UnloadBlob_UINT32_s(offset, &keyParms->parmSize, blob, capacity)))
+		return rc;
+
+	if (keyParms->parmSize > 4096) {
+		LogError("KEY_PARMS.parmSize %u exceeds maximum allowed bound",
+			 keyParms->parmSize);
+		keyParms->parmSize = 0;
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	}
+	if (*offset > capacity || (UINT64)keyParms->parmSize > capacity - *offset) {
+		keyParms->parmSize = 0;
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	}
 
 	if (keyParms->parmSize == 0)
 		keyParms->parms = NULL;
@@ -366,26 +483,37 @@ UnloadBlob_KEY_PARMS(UINT64 *offset, BYTE *blob, TCPA_KEY_PARMS *keyParms)
 			return TCSERR(TSS_E_OUTOFMEMORY);
 		}
 
-		UnloadBlob(offset, keyParms->parmSize, blob, keyParms->parms);
+		if ((rc = UnloadBlob_s(offset, keyParms->parmSize, blob, capacity, keyParms->parms))) {
+			free(keyParms->parms);
+			keyParms->parms = NULL;
+			keyParms->parmSize = 0;
+			return rc;
+		}
 	}
 
 	return TSS_SUCCESS;
 }
 
+TSS_RESULT
+UnloadBlob_KEY_PARMS(UINT64 *offset, BYTE *blob, TCPA_KEY_PARMS *keyParms)
+{
+	return UnloadBlob_KEY_PARMS_s(offset, blob, UINT64_MAX, keyParms);
+}
+
 void
 UnloadBlob_KEY_FLAGS(UINT64 *offset, BYTE *blob, TCPA_KEY_FLAGS *flags)
 {
-	if (!flags) {
-		UnloadBlob_UINT32(offset, NULL, blob);
-
-		return;
-	}
-
-	UnloadBlob_UINT32(offset, flags, blob);
+	(void)UnloadBlob_KEY_FLAGS_s(offset, blob, UINT64_MAX, flags);
 }
 
 TSS_RESULT
-UnloadBlob_CERTIFY_INFO(UINT64 *offset, BYTE *blob, TCPA_CERTIFY_INFO *certify)
+UnloadBlob_KEY_FLAGS_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_KEY_FLAGS *flags)
+{
+	return UnloadBlob_UINT32_s(offset, (UINT32 *)flags, blob, capacity);
+}
+
+TSS_RESULT
+UnloadBlob_CERTIFY_INFO_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_CERTIFY_INFO *certify)
 {
 	TSS_RESULT rc;
 
@@ -393,57 +521,95 @@ UnloadBlob_CERTIFY_INFO(UINT64 *offset, BYTE *blob, TCPA_CERTIFY_INFO *certify)
 		TPM_VERSION version;
 		UINT32 size;
 
-		UnloadBlob_VERSION(offset, blob, &version);
-		UnloadBlob_UINT16(offset, NULL, blob);
-		UnloadBlob_KEY_FLAGS(offset, blob, NULL);
-		UnloadBlob_BOOL(offset, NULL, blob);
-
-		if ((rc = UnloadBlob_KEY_PARMS(offset, blob, NULL)))
+		if ((rc = UnloadBlob_VERSION_s(offset, blob, capacity, &version)))
+			return rc;
+		if ((rc = UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return rc;
+		if ((rc = UnloadBlob_KEY_FLAGS_s(offset, blob, capacity, NULL)))
+			return rc;
+		if ((rc = UnloadBlob_BOOL_s(offset, NULL, blob, capacity)))
 			return rc;
 
-		UnloadBlob(offset, TCPA_DIGEST_SIZE, blob, NULL);
-		UnloadBlob(offset, TCPA_NONCE_SIZE, blob, NULL);
-		UnloadBlob_BOOL(offset, NULL, blob);
-		UnloadBlob_UINT32(offset, &size, blob);
+		if ((rc = UnloadBlob_KEY_PARMS_s(offset, blob, capacity, NULL)))
+			return rc;
 
-		if (size > 0)
-			UnloadBlob(offset, size, blob, NULL);
+		if ((rc = UnloadBlob_s(offset, TCPA_DIGEST_SIZE, blob, capacity, NULL)))
+			return rc;
+		if ((rc = UnloadBlob_s(offset, TCPA_NONCE_SIZE, blob, capacity, NULL)))
+			return rc;
+		if ((rc = UnloadBlob_BOOL_s(offset, NULL, blob, capacity)))
+			return rc;
+		if ((rc = UnloadBlob_UINT32_s(offset, &size, blob, capacity)))
+			return rc;
+
+		if (size > 4096)
+			return TCSERR(TSS_E_BAD_PARAMETER);
+		if (size > 0) {
+			if ((rc = UnloadBlob_s(offset, size, blob, capacity, NULL)))
+				return rc;
+		}
 
 		if (Decode_UINT16((BYTE *) &version) == TPM_TAG_CERTIFY_INFO2){
 			/* This is a TPM_CERTIFY_INFO2 structure. */
 			/* Read migrationAuthority. */
-			UnloadBlob_UINT32(offset, &size, blob);
-			if (size > 0)
-				UnloadBlob(offset, size, blob, NULL);
+			if ((rc = UnloadBlob_UINT32_s(offset, &size, blob, capacity)))
+				return rc;
+			if (size > 4096)
+				return TCSERR(TSS_E_BAD_PARAMETER);
+			if (size > 0) {
+				if ((rc = UnloadBlob_s(offset, size, blob, capacity, NULL)))
+					return rc;
+			}
 		}
 
 		return TSS_SUCCESS;
 	}
 
-	UnloadBlob_VERSION(offset, blob, (TPM_VERSION *)&certify->version);
-	UnloadBlob_UINT16(offset, &certify->keyUsage, blob);
-	UnloadBlob_KEY_FLAGS(offset, blob, &certify->keyFlags);
-	UnloadBlob_BOOL(offset, (TSS_BOOL *)&certify->authDataUsage, blob);
+	certify->algorithmParms.parms = NULL;
+	certify->algorithmParms.parmSize = 0;
+	certify->PCRInfo = NULL;
+	certify->PCRInfoSize = 0;
 
-	if ((rc = UnloadBlob_KEY_PARMS(offset, blob, &certify->algorithmParms)))
+	if ((rc = UnloadBlob_VERSION_s(offset, blob, capacity, (TPM_VERSION *)&certify->version)))
+		return rc;
+	if ((rc = UnloadBlob_UINT16_s(offset, &certify->keyUsage, blob, capacity)))
+		return rc;
+	if ((rc = UnloadBlob_KEY_FLAGS_s(offset, blob, capacity, &certify->keyFlags)))
+		return rc;
+	if ((rc = UnloadBlob_BOOL_s(offset, (TSS_BOOL *)&certify->authDataUsage, blob, capacity)))
 		return rc;
 
-	UnloadBlob(offset, TCPA_DIGEST_SIZE, blob, certify->pubkeyDigest.digest);
-	UnloadBlob(offset, TCPA_NONCE_SIZE, blob, certify->data.nonce);
-	UnloadBlob_BOOL(offset, (TSS_BOOL *)&certify->parentPCRStatus, blob);
-	UnloadBlob_UINT32(offset, &certify->PCRInfoSize, blob);
+	if ((rc = UnloadBlob_KEY_PARMS_s(offset, blob, capacity, &certify->algorithmParms)))
+		return rc;
+
+	if ((rc = UnloadBlob_s(offset, TCPA_DIGEST_SIZE, blob, capacity, certify->pubkeyDigest.digest)))
+		goto err;
+	if ((rc = UnloadBlob_s(offset, TCPA_NONCE_SIZE, blob, capacity, certify->data.nonce)))
+		goto err;
+	if ((rc = UnloadBlob_BOOL_s(offset, (TSS_BOOL *)&certify->parentPCRStatus, blob, capacity)))
+		goto err;
+	if ((rc = UnloadBlob_UINT32_s(offset, &certify->PCRInfoSize, blob, capacity)))
+		goto err;
+
+	if (certify->PCRInfoSize > 4096) {
+		rc = TCSERR(TSS_E_BAD_PARAMETER);
+		goto err;
+	}
+	if (*offset > capacity || (UINT64)certify->PCRInfoSize > capacity - *offset) {
+		rc = TCSERR(TSS_E_BAD_PARAMETER);
+		goto err;
+	}
 
 	if (certify->PCRInfoSize > 0) {
 		certify->PCRInfo = (BYTE *)malloc(certify->PCRInfoSize);
 		if (certify->PCRInfo == NULL) {
 			LogError("malloc of %u bytes failed.", certify->PCRInfoSize);
 			certify->PCRInfoSize = 0;
-			free(certify->algorithmParms.parms);
-			certify->algorithmParms.parms = NULL;
-			certify->algorithmParms.parmSize = 0;
-			return TCSERR(TSS_E_OUTOFMEMORY);
+			rc = TCSERR(TSS_E_OUTOFMEMORY);
+			goto err;
 		}
-		UnloadBlob(offset, certify->PCRInfoSize, blob, certify->PCRInfo);
+		if ((rc = UnloadBlob_s(offset, certify->PCRInfoSize, blob, capacity, certify->PCRInfo)))
+			goto err;
 	} else {
 		certify->PCRInfo = NULL;
 	}
@@ -452,9 +618,84 @@ UnloadBlob_CERTIFY_INFO(UINT64 *offset, BYTE *blob, TCPA_CERTIFY_INFO *certify)
 		/* This is a TPM_CERTIFY_INFO2 structure. */
 		/* Read migrationAuthority. */
 		UINT32 size;
-		UnloadBlob_UINT32(offset, &size, blob);
-		if (size > 0)
-			UnloadBlob(offset, size, blob, NULL);
+		if ((rc = UnloadBlob_UINT32_s(offset, &size, blob, capacity)))
+			goto err;
+		if (size > 4096) {
+			rc = TCSERR(TSS_E_BAD_PARAMETER);
+			goto err;
+		}
+		if (size > 0) {
+			if ((rc = UnloadBlob_s(offset, size, blob, capacity, NULL)))
+				goto err;
+		}
+	}
+
+	return TSS_SUCCESS;
+
+err:
+	free(certify->algorithmParms.parms);
+	certify->algorithmParms.parms = NULL;
+	certify->algorithmParms.parmSize = 0;
+	free(certify->PCRInfo);
+	certify->PCRInfo = NULL;
+	certify->PCRInfoSize = 0;
+	return rc;
+}
+
+TSS_RESULT
+UnloadBlob_CERTIFY_INFO(UINT64 *offset, BYTE *blob, TCPA_CERTIFY_INFO *certify)
+{
+	return UnloadBlob_CERTIFY_INFO_s(offset, blob, UINT64_MAX, certify);
+}
+
+TSS_RESULT
+UnloadBlob_KEY_HANDLE_LIST_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_KEY_HANDLE_LIST *list)
+{
+	UINT16 i;
+	TSS_RESULT rc;
+
+	if (!list) {
+		UINT16 size;
+
+		if ((rc = UnloadBlob_UINT16_s(offset, &size, blob, capacity)))
+			return rc;
+
+		if (*offset > capacity || ((UINT64)size * sizeof(UINT32)) > capacity - *offset)
+			return TCSERR(TSS_E_BAD_PARAMETER);
+
+		*offset += ((UINT64)size * sizeof(UINT32));
+
+		return TSS_SUCCESS;
+	}
+
+	list->handle = NULL;
+	list->loaded = 0;
+
+	if ((rc = UnloadBlob_UINT16_s(offset, &list->loaded, blob, capacity)))
+		return rc;
+
+	if (list->loaded == 0)
+		return TSS_SUCCESS;
+
+	if (*offset > capacity || ((UINT64)list->loaded * sizeof(UINT32)) > capacity - *offset) {
+		list->loaded = 0;
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	}
+
+	list->handle = malloc(list->loaded * sizeof (UINT32));
+	if (list->handle == NULL) {
+		LogError("malloc of %zd bytes failed.", list->loaded * sizeof (UINT32));
+		list->loaded = 0;
+		return TCSERR(TSS_E_OUTOFMEMORY);
+	}
+
+	for (i = 0; i < list->loaded; i++) {
+		if ((rc = UnloadBlob_UINT32_s(offset, &list->handle[i], blob, capacity))) {
+			free(list->handle);
+			list->handle = NULL;
+			list->loaded = 0;
+			return rc;
+		}
 	}
 
 	return TSS_SUCCESS;
@@ -463,35 +704,7 @@ UnloadBlob_CERTIFY_INFO(UINT64 *offset, BYTE *blob, TCPA_CERTIFY_INFO *certify)
 TSS_RESULT
 UnloadBlob_KEY_HANDLE_LIST(UINT64 *offset, BYTE *blob, TCPA_KEY_HANDLE_LIST *list)
 {
-	UINT16 i;
-
-	if (!list) {
-		UINT16 size;
-
-		UnloadBlob_UINT16(offset, &size, blob);
-
-		*offset += (size * sizeof(UINT32));
-
-		return TSS_SUCCESS;
-	}
-
-	UnloadBlob_UINT16(offset, &list->loaded, blob);
-	if (list->loaded == 0) {
-		list->handle = NULL;
-		return TSS_SUCCESS;
-	}
-
-	list->handle = malloc(list->loaded * sizeof (UINT32));
-        if (list->handle == NULL) {
-		LogError("malloc of %zd bytes failed.", list->loaded * sizeof (UINT32));
-		list->loaded = 0;
-                return TCSERR(TSS_E_OUTOFMEMORY);
-        }
-
-	for (i = 0; i < list->loaded; i++)
-		UnloadBlob_UINT32(offset, &list->handle[i], blob);
-
-	return TSS_SUCCESS;
+	return UnloadBlob_KEY_HANDLE_LIST_s(offset, blob, UINT64_MAX, list);
 }
 
 void
@@ -529,4 +742,3 @@ UnloadBlob_AUTHDATA(UINT64 *offset, BYTE *blob, TPM_AUTHDATA *authdata)
 {
 	UnloadBlob(offset, TPM_SHA1_160_HASH_LEN, blob, authdata->authdata);
 }
-

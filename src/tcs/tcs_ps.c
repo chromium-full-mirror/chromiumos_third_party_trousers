@@ -58,8 +58,9 @@ fill_key_info(struct key_disk_cache *d, struct key_mem_cache *m, TSS_KM_KEYINFO 
 			return result;
 
 		offset = 0;
+		memset(&tmp_key, 0, sizeof(tmp_key));
 		/* XXX add a real context handle here */
-		if ((result = UnloadBlob_TSS_KEY(&offset, tmp_blob, &tmp_key)))
+		if ((result = UnloadBlob_TSS_KEY_s(&offset, tmp_blob, (UINT64)tmp_blob_size, &tmp_key)))
 			return result;
 
 		if (tmp_key.hdr.key12.tag == TPM_TAG_KEY12) {
@@ -112,8 +113,9 @@ fill_key_info2(struct key_disk_cache *d, struct key_mem_cache *m, TSS_KM_KEYINFO
 			return result;
 
 		offset = 0;
+		memset(&tmp_key, 0, sizeof(tmp_key));
 		/* XXX add a real context handle here */
-		if ((result = UnloadBlob_TSS_KEY(&offset, tmp_blob, &tmp_key)))
+		if ((result = UnloadBlob_TSS_KEY_s(&offset, tmp_blob, (UINT64)tmp_blob_size, &tmp_key)))
 			return result;
 
 		if (tmp_key.hdr.key12.tag == TPM_TAG_KEY12) {
@@ -173,4 +175,3 @@ key_mgr_load_by_uuid(TCS_CONTEXT_HANDLE hContext,
 
 	return result;
 }
-

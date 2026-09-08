@@ -1,4 +1,3 @@
-
 /*
  * Licensed Materials - Property of IBM
  *
@@ -29,6 +28,7 @@ TSS_UUID NULL_UUID = { 0, 0, 0, 0, 0, { 0, 0, 0, 0, 0, 0 } };
 TSS_RESULT
 add_cache_entry(TCS_CONTEXT_HANDLE hContext,
 		BYTE*              blob,
+		UINT32             blob_size,
 		TCS_KEY_HANDLE     hParent,
 		TPM_KEY_HANDLE     hSlot,
 		TCS_KEY_HANDLE*    new)
@@ -41,8 +41,9 @@ add_cache_entry(TCS_CONTEXT_HANDLE hContext,
 	if (!blob) {
 		pKey = NULL;
 	} else {
+		memset(&key, 0, sizeof(TSS_KEY));
 		offset = 0;
-		if ((result = UnloadBlob_TSS_KEY(&offset, blob, &key)))
+		if ((result = UnloadBlob_TSS_KEY_s(&offset, blob, (UINT64)blob_size, &key)))
 			return result;
 
 		// If the key requires auth data, then the key cannot be used.
@@ -176,7 +177,7 @@ load_key_init(TPM_COMMAND_CODE   ord,
 	if (!encrypted) {
 		offset = 0;
 		memset(&key, 0, sizeof(TSS_KEY));
-		if ((result = UnloadBlob_TSS_KEY(&offset, blob, &key)))
+		if ((result = UnloadBlob_TSS_KEY_s(&offset, blob, (UINT64)blob_size, &key)))
 			return result;
 	}
 
@@ -223,10 +224,11 @@ load_key_final(TCS_CONTEXT_HANDLE hContext,
 	       TCS_KEY_HANDLE     parent_handle,
 	       TCS_KEY_HANDLE*    tcs_handle,
 	       BYTE*              blob,
+	       UINT32             blob_size,
 	       TPM_KEY_HANDLE     slot)
 {
 	if (*tcs_handle == NULL_TCS_HANDLE)
-		return add_cache_entry(hContext, blob, parent_handle, slot, tcs_handle);
+		return add_cache_entry(hContext, blob, blob_size, parent_handle, slot, tcs_handle);
 	else
 		return mc_set_slot_by_handle(*tcs_handle, slot);
 }
@@ -315,7 +317,7 @@ clearUnknownKeys(TCS_CONTEXT_HANDLE hContext, UINT32 *cleared)
 						  &respData)))
 		return result;
 
-	if ((result = UnloadBlob_KEY_HANDLE_LIST(&offset, respData, &keyList)))
+	if ((result = UnloadBlob_KEY_HANDLE_LIST_s(&offset, respData, (UINT64)respDataSize, &keyList)))
 		goto done;
 
 #ifdef TSS_DEBUG
@@ -377,7 +379,7 @@ clearKeysFromChip(TCS_CONTEXT_HANDLE hContext)
 					&respDataSize, &respData)))
 		return result;
 
-	if ((result = UnloadBlob_KEY_HANDLE_LIST(&offset, respData, &keyList)))
+	if ((result = UnloadBlob_KEY_HANDLE_LIST_s(&offset, respData, (UINT64)respDataSize, &keyList)))
 		return result;
 	for (i = 0; i < keyList.loaded; i++) {
 		if (keyList.handle[i] == SRK_TPM_HANDLE ||	/*can't evict SRK */
@@ -401,20 +403,42 @@ LoadBlob_KEY_PARMS(UINT64 *offset, BYTE *blob, TCPA_KEY_PARMS *keyInfo)
 }
 
 TSS_RESULT
-UnloadBlob_STORE_PUBKEY(UINT64 *offset, BYTE *blob, TCPA_STORE_PUBKEY *store)
+UnloadBlob_STORE_PUBKEY_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_STORE_PUBKEY *store)
 {
+	TSS_RESULT rc;
+
 	if (!store) {
 		UINT32 keyLength;
 
-		UnloadBlob_UINT32(offset, &keyLength, blob);
+		if ((rc = UnloadBlob_UINT32_s(offset, &keyLength, blob, capacity)))
+			return rc;
 
-		if (keyLength > 0)
-			UnloadBlob(offset, keyLength, blob, NULL);
+		if (keyLength > 4096)
+			return TCSERR(TSS_E_BAD_PARAMETER);
+		if (keyLength > 0) {
+			if ((rc = UnloadBlob_s(offset, keyLength, blob, capacity, NULL)))
+				return rc;
+		}
 
 		return TSS_SUCCESS;
 	}
 
-	UnloadBlob_UINT32(offset, &store->keyLength, blob);
+	store->key = NULL;
+	store->keyLength = 0;
+
+	if ((rc = UnloadBlob_UINT32_s(offset, &store->keyLength, blob, capacity)))
+		return rc;
+
+	if (store->keyLength > 4096) {
+		LogError("STORE_PUBKEY.keyLength %u exceeds maximum allowed bound",
+			 store->keyLength);
+		store->keyLength = 0;
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	}
+	if (*offset > capacity || (UINT64)store->keyLength > capacity - *offset) {
+		store->keyLength = 0;
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	}
 
 	if (store->keyLength == 0) {
 		store->key = NULL;
@@ -427,10 +451,21 @@ UnloadBlob_STORE_PUBKEY(UINT64 *offset, BYTE *blob, TCPA_STORE_PUBKEY *store)
 			return TCSERR(TSS_E_OUTOFMEMORY);
 		}
 
-		UnloadBlob(offset, store->keyLength, blob, store->key);
+		if ((rc = UnloadBlob_s(offset, store->keyLength, blob, capacity, store->key))) {
+			free(store->key);
+			store->key = NULL;
+			store->keyLength = 0;
+			return rc;
+		}
 	}
 
 	return TSS_SUCCESS;
+}
+
+TSS_RESULT
+UnloadBlob_STORE_PUBKEY(UINT64 *offset, BYTE *blob, TCPA_STORE_PUBKEY *store)
+{
+	return UnloadBlob_STORE_PUBKEY_s(offset, blob, UINT64_MAX, store);
 }
 
 void
@@ -441,48 +476,88 @@ LoadBlob_STORE_PUBKEY(UINT64 *offset, BYTE * blob, TCPA_STORE_PUBKEY * store)
 }
 
 TSS_RESULT
-UnloadBlob_TSS_KEY(UINT64 *offset, BYTE *blob, TSS_KEY *key)
+UnloadBlob_TSS_KEY_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TSS_KEY *key)
 {
 	TSS_RESULT rc;
 
 	if (!key) {
 		UINT32 size;
 
-		/* TPM_KEY's ver and TPM_KEY12's tag/file are
-		   the same size, so... */
-		UnloadBlob_VERSION(offset, blob, NULL);
-		UnloadBlob_UINT16(offset, NULL, blob);
-		UnloadBlob_KEY_FLAGS(offset, blob, NULL);
-		UnloadBlob_BOOL(offset, NULL, blob);
-		if ((rc = UnloadBlob_KEY_PARMS(offset, blob, NULL)))
+		/* TPM_KEY's ver and TPM_KEY12's tag/file are the same size */
+		if ((rc = UnloadBlob_VERSION_s(offset, blob, capacity, NULL)))
 			return rc;
-		UnloadBlob_UINT32(offset, &size, blob);
-
-		if (size > 0)
-			UnloadBlob(offset, size, blob, NULL);
-
-		if ((rc = UnloadBlob_STORE_PUBKEY(offset, blob, NULL)))
+		if ((rc = UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return rc;
+		if ((rc = UnloadBlob_KEY_FLAGS_s(offset, blob, capacity, NULL)))
+			return rc;
+		if ((rc = UnloadBlob_BOOL_s(offset, NULL, blob, capacity)))
+			return rc;
+		if ((rc = UnloadBlob_KEY_PARMS_s(offset, blob, capacity, NULL)))
+			return rc;
+		if ((rc = UnloadBlob_UINT32_s(offset, &size, blob, capacity)))
 			return rc;
 
-		UnloadBlob_UINT32(offset, &size, blob);
+		if (size > 4096)
+			return TCSERR(TSS_E_BAD_PARAMETER);
+		if (size > 0) {
+			if ((rc = UnloadBlob_s(offset, size, blob, capacity, NULL)))
+				return rc;
+		}
 
-		if (size > 0)
-			UnloadBlob(offset, size, blob, NULL);
+		if ((rc = UnloadBlob_STORE_PUBKEY_s(offset, blob, capacity, NULL)))
+			return rc;
+
+		if ((rc = UnloadBlob_UINT32_s(offset, &size, blob, capacity)))
+			return rc;
+
+		if (size > 4096)
+			return TCSERR(TSS_E_BAD_PARAMETER);
+		if (size > 0) {
+			if ((rc = UnloadBlob_s(offset, size, blob, capacity, NULL)))
+				return rc;
+		}
 
 		return TSS_SUCCESS;
 	}
 
-	if (key->hdr.key12.tag == TPM_TAG_KEY12) {
-		UnloadBlob_UINT16(offset, &key->hdr.key12.tag, blob);
-		UnloadBlob_UINT16(offset, &key->hdr.key12.fill, blob);
-	} else
-		UnloadBlob_TCPA_VERSION(offset, blob, &key->hdr.key11.ver);
-	UnloadBlob_UINT16(offset, &key->keyUsage, blob);
-	UnloadBlob_KEY_FLAGS(offset, blob, &key->keyFlags);
-	UnloadBlob_BOOL(offset, (TSS_BOOL *)&key->authDataUsage, blob);
-	if ((rc = UnloadBlob_KEY_PARMS(offset, blob, &key->algorithmParms)))
-		return rc;
-	UnloadBlob_UINT32(offset, &key->PCRInfoSize, blob);
+	memset(key, 0, sizeof(TSS_KEY));
+
+	UINT16 tag;
+	UINT64 tag_offset = *offset;
+	if ((rc = UnloadBlob_UINT16_s(&tag_offset, &tag, blob, capacity)))
+		goto err;
+
+	if (tag == TPM_TAG_KEY12) {
+		if ((rc = UnloadBlob_UINT16_s(offset, &key->hdr.key12.tag, blob, capacity)))
+			goto err;
+		if ((rc = UnloadBlob_UINT16_s(offset, &key->hdr.key12.fill, blob, capacity)))
+			goto err;
+	} else {
+		if ((rc = UnloadBlob_TCPA_VERSION_s(offset, blob, capacity, &key->hdr.key11.ver)))
+			goto err;
+	}
+
+	if ((rc = UnloadBlob_UINT16_s(offset, &key->keyUsage, blob, capacity)))
+		goto err;
+	if ((rc = UnloadBlob_KEY_FLAGS_s(offset, blob, capacity, &key->keyFlags)))
+		goto err;
+	if ((rc = UnloadBlob_BOOL_s(offset, (TSS_BOOL *)&key->authDataUsage, blob, capacity)))
+		goto err;
+	if ((rc = UnloadBlob_KEY_PARMS_s(offset, blob, capacity, &key->algorithmParms)))
+		goto err;
+	if ((rc = UnloadBlob_UINT32_s(offset, &key->PCRInfoSize, blob, capacity)))
+		goto err;
+
+	if (key->PCRInfoSize > 4096) {
+		LogError("TSS_KEY.PCRInfoSize %u exceeds maximum allowed bound",
+			 key->PCRInfoSize);
+		rc = TCSERR(TSS_E_BAD_PARAMETER);
+		goto err;
+	}
+	if (*offset > capacity || (UINT64)key->PCRInfoSize > capacity - *offset) {
+		rc = TCSERR(TSS_E_BAD_PARAMETER);
+		goto err;
+	}
 
 	if (key->PCRInfoSize == 0)
 		key->PCRInfo = NULL;
@@ -490,25 +565,28 @@ UnloadBlob_TSS_KEY(UINT64 *offset, BYTE *blob, TSS_KEY *key)
 		key->PCRInfo = malloc(key->PCRInfoSize);
 		if (key->PCRInfo == NULL) {
 			LogError("malloc of %u bytes failed.", key->PCRInfoSize);
-			key->PCRInfoSize = 0;
-			free(key->algorithmParms.parms);
-			key->algorithmParms.parms = NULL;
-			key->algorithmParms.parmSize = 0;
-			return TCSERR(TSS_E_OUTOFMEMORY);
+			rc = TCSERR(TSS_E_OUTOFMEMORY);
+			goto err;
 		}
-		UnloadBlob(offset, key->PCRInfoSize, blob, key->PCRInfo);
+		if ((rc = UnloadBlob_s(offset, key->PCRInfoSize, blob, capacity, key->PCRInfo)))
+			goto err;
 	}
 
-	if ((rc = UnloadBlob_STORE_PUBKEY(offset, blob, &key->pubKey))) {
-		free(key->PCRInfo);
-		key->PCRInfo = NULL;
-		key->PCRInfoSize = 0;
-		free(key->algorithmParms.parms);
-		key->algorithmParms.parms = NULL;
-		key->algorithmParms.parmSize = 0;
-		return rc;
+	if ((rc = UnloadBlob_STORE_PUBKEY_s(offset, blob, capacity, &key->pubKey)))
+		goto err;
+
+	if ((rc = UnloadBlob_UINT32_s(offset, &key->encSize, blob, capacity)))
+		goto err;
+
+	if (key->encSize > 4096) {
+		LogError("TSS_KEY.encSize %u exceeds maximum allowed bound", key->encSize);
+		rc = TCSERR(TSS_E_BAD_PARAMETER);
+		goto err;
 	}
-	UnloadBlob_UINT32(offset, &key->encSize, blob);
+	if (*offset > capacity || (UINT64)key->encSize > capacity - *offset) {
+		rc = TCSERR(TSS_E_BAD_PARAMETER);
+		goto err;
+	}
 
 	if (key->encSize == 0)
 		key->encData = NULL;
@@ -516,22 +594,24 @@ UnloadBlob_TSS_KEY(UINT64 *offset, BYTE *blob, TSS_KEY *key)
 		key->encData = (BYTE *)malloc(key->encSize);
 		if (key->encData == NULL) {
 			LogError("malloc of %d bytes failed.", key->encSize);
-			key->encSize = 0;
-			free(key->algorithmParms.parms);
-			key->algorithmParms.parms = NULL;
-			key->algorithmParms.parmSize = 0;
-			free(key->PCRInfo);
-			key->PCRInfo = NULL;
-			key->PCRInfoSize = 0;
-			free(key->pubKey.key);
-			key->pubKey.key = NULL;
-			key->pubKey.keyLength = 0;
-			return TCSERR(TSS_E_OUTOFMEMORY);
+			rc = TCSERR(TSS_E_OUTOFMEMORY);
+			goto err;
 		}
-		UnloadBlob(offset, key->encSize, blob, key->encData);
+		if ((rc = UnloadBlob_s(offset, key->encSize, blob, capacity, key->encData)))
+			goto err;
 	}
 
 	return TSS_SUCCESS;
+
+err:
+	destroy_key_refs(key);
+	return rc;
+}
+
+TSS_RESULT
+UnloadBlob_TSS_KEY(UINT64 *offset, BYTE *blob, TSS_KEY *key)
+{
+	return UnloadBlob_TSS_KEY_s(offset, blob, UINT64_MAX, key);
 }
 
 void
@@ -561,25 +641,37 @@ LoadBlob_PUBKEY(UINT64 *offset, BYTE * blob, TCPA_PUBKEY * key)
 }
 
 TSS_RESULT
-UnloadBlob_PUBKEY(UINT64 *offset, BYTE *blob, TCPA_PUBKEY *key)
+UnloadBlob_PUBKEY_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_PUBKEY *key)
 {
 	TSS_RESULT rc;
 
 	if (!key) {
-		if ((rc = UnloadBlob_KEY_PARMS(offset, blob, NULL)))
+		if ((rc = UnloadBlob_KEY_PARMS_s(offset, blob, capacity, NULL)))
 			return rc;
-		return UnloadBlob_STORE_PUBKEY(offset, blob, NULL);
+		return UnloadBlob_STORE_PUBKEY_s(offset, blob, capacity, NULL);
 	}
 
-	if ((rc = UnloadBlob_KEY_PARMS(offset, blob, &key->algorithmParms)))
+	key->pubKey.key = NULL;
+	key->pubKey.keyLength = 0;
+	key->algorithmParms.parms = NULL;
+	key->algorithmParms.parmSize = 0;
+
+	if ((rc = UnloadBlob_KEY_PARMS_s(offset, blob, capacity, &key->algorithmParms)))
 		return rc;
-	if ((rc = UnloadBlob_STORE_PUBKEY(offset, blob, &key->pubKey))) {
+	if ((rc = UnloadBlob_STORE_PUBKEY_s(offset, blob, capacity, &key->pubKey))) {
 		free(key->algorithmParms.parms);
 		key->algorithmParms.parms = NULL;
 		key->algorithmParms.parmSize = 0;
+		return rc;
 	}
 
 	return rc;
+}
+
+TSS_RESULT
+UnloadBlob_PUBKEY(UINT64 *offset, BYTE *blob, TCPA_PUBKEY *key)
+{
+	return UnloadBlob_PUBKEY_s(offset, blob, UINT64_MAX, key);
 }
 
 void
@@ -591,6 +683,9 @@ LoadBlob_KEY_FLAGS(UINT64 *offset, BYTE * blob, TCPA_KEY_FLAGS * flags)
 void
 destroy_key_refs(TSS_KEY *key)
 {
+	if (!key)
+		return;
+
 	free(key->algorithmParms.parms);
 	key->algorithmParms.parms = NULL;
 	key->algorithmParms.parmSize = 0;

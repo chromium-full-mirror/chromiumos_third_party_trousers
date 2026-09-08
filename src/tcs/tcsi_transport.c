@@ -421,7 +421,7 @@ build_command:
 	{
 		TCS_KEY_HANDLE tcs_handle = NULL_TCS_HANDLE;
 
-		if ((result = load_key_final(hContext, handle1, &tcs_handle, NULL, val1)))
+		if ((result = load_key_final(hContext, handle1, &tcs_handle, NULL, 0, val1)))
 			goto done;
 
 		*rghHandles[0] = tcs_handle;

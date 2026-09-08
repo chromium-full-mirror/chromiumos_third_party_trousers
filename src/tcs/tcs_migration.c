@@ -27,25 +27,44 @@
 #include "tcsd.h"
 
 TSS_RESULT
-UnloadBlob_MIGRATIONKEYAUTH(UINT64 *offset, BYTE *blob, TCPA_MIGRATIONKEYAUTH *mkAuth)
+UnloadBlob_MIGRATIONKEYAUTH_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TCPA_MIGRATIONKEYAUTH *mkAuth)
 {
 	TSS_RESULT result;
 
+	if (!offset || !blob)
+		return TCSERR(TSS_E_BAD_PARAMETER);
+
 	if (!mkAuth) {
-		if ((result = UnloadBlob_PUBKEY(offset, blob, NULL)))
+		if ((result = UnloadBlob_PUBKEY_s(offset, blob, capacity, NULL)))
 			return result;
 
-		UnloadBlob_UINT16(offset, NULL, blob);
-		UnloadBlob(offset, 20, blob, NULL);
-
-		return TSS_SUCCESS;
+		if ((result = UnloadBlob_UINT16_s(offset, NULL, blob, capacity)))
+			return result;
+		return UnloadBlob_s(offset, 20, blob, capacity, NULL);
 	}
 
-	if ((result = UnloadBlob_PUBKEY(offset, blob, &mkAuth->migrationKey)))
+	if ((result = UnloadBlob_PUBKEY_s(offset, blob, capacity, &mkAuth->migrationKey)))
 		return result;
 
-	UnloadBlob_UINT16(offset, &mkAuth->migrationScheme, blob);
-	UnloadBlob(offset, 20, blob, mkAuth->digest.digest);
+	if ((result = UnloadBlob_UINT16_s(offset, &mkAuth->migrationScheme, blob, capacity)))
+		goto err;
+	if ((result = UnloadBlob_s(offset, 20, blob, capacity, mkAuth->digest.digest)))
+		goto err;
 
+	return TSS_SUCCESS;
+
+err:
+	free(mkAuth->migrationKey.algorithmParms.parms);
+	mkAuth->migrationKey.algorithmParms.parms = NULL;
+	mkAuth->migrationKey.algorithmParms.parmSize = 0;
+	free(mkAuth->migrationKey.pubKey.key);
+	mkAuth->migrationKey.pubKey.key = NULL;
+	mkAuth->migrationKey.pubKey.keyLength = 0;
 	return result;
+}
+
+TSS_RESULT
+UnloadBlob_MIGRATIONKEYAUTH(UINT64 *offset, BYTE *blob, TCPA_MIGRATIONKEYAUTH *mkAuth)
+{
+	return UnloadBlob_MIGRATIONKEYAUTH_s(offset, blob, UINT64_MAX, mkAuth);
 }

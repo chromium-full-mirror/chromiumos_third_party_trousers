@@ -210,6 +210,11 @@ tcs_wrap_LogPcrEvent(struct tcsd_thread_data *data)
 
 	result = TCS_LogPcrEvent_Internal(hContext, event, &number);
 
+	if (result != TSS_SUCCESS) {
+		free(event.rgbPcrValue);
+		free(event.rgbEvent);
+	}
+
 	if (result == TSS_SUCCESS) {
 		initData(&data->comm, 1);
 		if (setData(TCSD_PACKET_TYPE_UINT32, 0, &number, 0, &data->comm)) {
@@ -241,54 +246,129 @@ LoadBlob_PCR_EVENT(UINT64 *offset, BYTE *blob, TSS_PCR_EVENT *event)
 }
 
 TSS_RESULT
-UnloadBlob_PCR_EVENT(UINT64 *offset, BYTE *blob, TSS_PCR_EVENT *event)
+UnloadBlob_PCR_EVENT_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TSS_PCR_EVENT *event)
 {
+	TSS_RESULT rc;
+
 	if (!event) {
 		UINT32 ulPcrValueLength, ulEventLength;
 
-		UnloadBlob_VERSION(offset, blob, NULL);
-		UnloadBlob_UINT32(offset, NULL, blob);
-		UnloadBlob_UINT32(offset, NULL, blob);
+		if ((rc = UnloadBlob_VERSION_s(offset, blob, capacity, NULL)))
+			return rc;
+		if ((rc = UnloadBlob_UINT32_s(offset, NULL, blob, capacity)))
+			return rc;
+		if ((rc = UnloadBlob_UINT32_s(offset, NULL, blob, capacity)))
+			return rc;
 
-		UnloadBlob_UINT32(offset, &ulPcrValueLength, blob);
-		(*offset) += ulPcrValueLength;
+		if ((rc = UnloadBlob_UINT32_s(offset, &ulPcrValueLength, blob, capacity)))
+			return rc;
+		if (ulPcrValueLength > 4096)
+			return TCSERR(TSS_E_BAD_PARAMETER);
+		if (ulPcrValueLength > 0) {
+			if ((rc = UnloadBlob_s(offset, ulPcrValueLength, blob, capacity, NULL)))
+				return rc;
+		}
 
-		UnloadBlob_UINT32(offset, &ulEventLength, blob);
-		(*offset) += ulEventLength;
+		if ((rc = UnloadBlob_UINT32_s(offset, &ulEventLength, blob, capacity)))
+			return rc;
+		if (ulEventLength > 4096)
+			return TCSERR(TSS_E_BAD_PARAMETER);
+		if (ulEventLength > 0) {
+			if ((rc = UnloadBlob_s(offset, ulEventLength, blob, capacity, NULL)))
+				return rc;
+		}
 
 		return TSS_SUCCESS;
 	}
 
-	UnloadBlob_VERSION(offset, blob, (TPM_VERSION *)&(event->versionInfo));
-	UnloadBlob_UINT32(offset, &event->ulPcrIndex, blob);
-	UnloadBlob_UINT32(offset, &event->eventType, blob);
+	memset(event, 0, sizeof(TSS_PCR_EVENT));
 
-	UnloadBlob_UINT32(offset, &event->ulPcrValueLength, blob);
+	if ((rc = UnloadBlob_VERSION_s(offset, blob, capacity, (TPM_VERSION *)&(event->versionInfo))))
+		return rc;
+	if ((rc = UnloadBlob_UINT32_s(offset, &event->ulPcrIndex, blob, capacity)))
+		return rc;
+	if ((rc = UnloadBlob_UINT32_s(offset, &event->eventType, blob, capacity)))
+		return rc;
+
+	if ((rc = UnloadBlob_UINT32_s(offset, &event->ulPcrValueLength, blob, capacity)))
+		return rc;
+
+	if (event->ulPcrValueLength > 4096) {
+		event->ulPcrValueLength = 0;
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	}
+	if (*offset > capacity || (UINT64)event->ulPcrValueLength > capacity - *offset) {
+		event->ulPcrValueLength = 0;
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	}
+
 	if (event->ulPcrValueLength > 0) {
 		event->rgbPcrValue = malloc(event->ulPcrValueLength);
 		if (event->rgbPcrValue == NULL) {
 			LogError("malloc of %u bytes failed.", event->ulPcrValueLength);
+			event->ulPcrValueLength = 0;
 			return TCSERR(TSS_E_OUTOFMEMORY);
 		}
 
-		UnloadBlob(offset, event->ulPcrValueLength, blob, event->rgbPcrValue);
+		if ((rc = UnloadBlob_s(offset, event->ulPcrValueLength, blob, capacity, event->rgbPcrValue))) {
+			free(event->rgbPcrValue);
+			event->rgbPcrValue = NULL;
+			event->ulPcrValueLength = 0;
+			return rc;
+		}
 	} else {
 		event->rgbPcrValue = NULL;
 	}
 
-	UnloadBlob_UINT32(offset, &event->ulEventLength, blob);
+	if ((rc = UnloadBlob_UINT32_s(offset, &event->ulEventLength, blob, capacity))) {
+		free(event->rgbPcrValue);
+		event->rgbPcrValue = NULL;
+		event->ulPcrValueLength = 0;
+		return rc;
+	}
+
+	if (event->ulEventLength > 4096) {
+		free(event->rgbPcrValue);
+		event->rgbPcrValue = NULL;
+		event->ulPcrValueLength = 0;
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	}
+	if (*offset > capacity || (UINT64)event->ulEventLength > capacity - *offset) {
+		free(event->rgbPcrValue);
+		event->rgbPcrValue = NULL;
+		event->ulPcrValueLength = 0;
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	}
+
 	if (event->ulEventLength > 0) {
 		event->rgbEvent = malloc(event->ulEventLength);
 		if (event->rgbEvent == NULL) {
 			LogError("malloc of %u bytes failed.", event->ulEventLength);
 			free(event->rgbPcrValue);
+			event->rgbPcrValue = NULL;
+			event->ulPcrValueLength = 0;
+			event->ulEventLength = 0;
 			return TCSERR(TSS_E_OUTOFMEMORY);
 		}
 
-		UnloadBlob(offset, event->ulEventLength, blob, event->rgbEvent);
+		if ((rc = UnloadBlob_s(offset, event->ulEventLength, blob, capacity, event->rgbEvent))) {
+			free(event->rgbPcrValue);
+			event->rgbPcrValue = NULL;
+			event->ulPcrValueLength = 0;
+			free(event->rgbEvent);
+			event->rgbEvent = NULL;
+			event->ulEventLength = 0;
+			return rc;
+		}
 	} else {
 		event->rgbEvent = NULL;
 	}
 
 	return TSS_SUCCESS;
+}
+
+TSS_RESULT
+UnloadBlob_PCR_EVENT(UINT64 *offset, BYTE *blob, TSS_PCR_EVENT *event)
+{
+	return UnloadBlob_PCR_EVENT_s(offset, blob, UINT64_MAX, event);
 }

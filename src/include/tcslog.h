@@ -51,11 +51,11 @@
 		LogDebugFn("pcrInfosize: %u", k.PCRInfoSize); \
 		LogDebugFn("encDataSize: %u", k.encSize); \
 	} while (0)
-#define LogDebugUnrollKey(b) \
+#define LogDebugUnrollKey(b, len) \
 	do { \
 			TSS_KEY tmpkey; \
 			UINT64 offset = 0; \
-			if (!UnloadBlob_TSS_KEY(&offset, b, &tmpkey)) { \
+			if (!UnloadBlob_TSS_KEY_s(&offset, b, (UINT64)(len), &tmpkey)) { \
 				LogDebugKey(tmpkey); \
 				destroy_key_refs(&tmpkey); \
 			} else { \
@@ -84,7 +84,7 @@ void       LogTPMERR(TSS_RESULT, char *, int);
 #define LogDebugFn(fmt, ...)
 #define LogBlob(sz,blb)
 #define LogDebugKey(s)
-#define LogDebugUnrollKey(b)
+#define LogDebugUnrollKey(b, len)
 #define LogDebugBacktrace()
 #define LogError(fmt, ...) syslog(LOG_ERR, "TSS: " fmt, ##__VA_ARGS__)
 #define LogWarn(fmt, ...) syslog(LOG_WARNING, "TSS: " fmt, ##__VA_ARGS__)
@@ -99,7 +99,7 @@ void       LogTPMERR(TSS_RESULT, char *, int);
 #define LogDebugFn(fmt, ...)
 #define LogBlob(sz,blb)
 #define LogDebugKey(s)
-#define LogDebugUnrollKey(b)
+#define LogDebugUnrollKey(b, len)
 #define LogError(fmt, ...) syslog(LOG_ERR, "TSS: " fmt, ##__VA_ARGS__)
 #define LogWarn(fmt, ...) syslog(LOG_WARNING, "TSS: " fmt, ##__VA_ARGS__)
 #define LogInfo(fmt, ...) syslog(LOG_INFO, "TSS: " fmt, ##__VA_ARGS__)

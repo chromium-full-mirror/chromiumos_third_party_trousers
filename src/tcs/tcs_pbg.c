@@ -283,7 +283,8 @@ tpm_rsp_parse(TPM_COMMAND_CODE ordinal, BYTE *b, UINT32 len, ...)
 		}
 
 		offset1 = offset2 = TSS_TPM_TXBLOB_HDR_LEN;
-		UnloadBlob_CERTIFY_INFO(&offset2, b, NULL);
+		if ((result = UnloadBlob_CERTIFY_INFO_s(&offset2, b, (UINT64)len, NULL)))
+			return result;
 		*len1 = offset2 - offset1;
 
 		if ((*blob1 = malloc(*len1)) == NULL) {
@@ -534,7 +535,8 @@ tpm_rsp_parse(TPM_COMMAND_CODE ordinal, BYTE *b, UINT32 len, ...)
 		}
 
 		offset1 = offset2 = TSS_TPM_TXBLOB_HDR_LEN;
-		UnloadBlob_TSS_KEY(&offset1, b, NULL);
+		if ((result = UnloadBlob_TSS_KEY_s(&offset1, b, (UINT64)len, NULL)))
+			return result;
 		offset1 -= TSS_TPM_TXBLOB_HDR_LEN;
 
 		if ((*blob1 = malloc(offset1)) == NULL) {
@@ -582,7 +584,8 @@ tpm_rsp_parse(TPM_COMMAND_CODE ordinal, BYTE *b, UINT32 len, ...)
 		}
 
 		offset1 = TSS_TPM_TXBLOB_HDR_LEN;
-		UnloadBlob_VERSION(&offset1, b, ver1);
+		if ((result = UnloadBlob_VERSION_s(&offset1, b, (UINT64)len, ver1)))
+			return result;
 		UnloadBlob_UINT32(&offset1, data1, b);
 		UnloadBlob_UINT32(&offset1, data2, b);
 		break;

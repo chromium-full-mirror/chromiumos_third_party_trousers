@@ -493,26 +493,51 @@ mc_add_entry_init(TCS_KEY_HANDLE tcs_handle,
 		}
 
 		/* allocate space for the public key */
-		entry->blob->pubKey.key = (BYTE *)malloc(key_blob->pubKey.keyLength);
-		if (entry->blob->pubKey.key == NULL) {
-			LogError("malloc of %u bytes failed.", key_blob->pubKey.keyLength);
-			free(entry->blob);
-			free(entry);
-			return TCSERR(TSS_E_OUTOFMEMORY);
+		if (key_blob->pubKey.keyLength > 0) {
+			entry->blob->pubKey.key = (BYTE *)malloc(key_blob->pubKey.keyLength);
+			if (entry->blob->pubKey.key == NULL) {
+				LogError("malloc of %u bytes failed.", key_blob->pubKey.keyLength);
+				free(entry->blob->algorithmParms.parms);
+				free(entry->blob);
+				free(entry);
+				return TCSERR(TSS_E_OUTOFMEMORY);
+			}
+			memcpy(entry->blob->pubKey.key, key_blob->pubKey.key, key_blob->pubKey.keyLength);
+		} else {
+			entry->blob->pubKey.key = NULL;
 		}
-		memcpy(entry->blob->pubKey.key, key_blob->pubKey.key, key_blob->pubKey.keyLength);
+
+		/* allocate space for the PCR info if necessary */
+		if (key_blob->PCRInfoSize != 0) {
+			entry->blob->PCRInfo = (BYTE *)malloc(key_blob->PCRInfoSize);
+			if (entry->blob->PCRInfo == NULL) {
+				LogError("malloc of %u bytes failed.", key_blob->PCRInfoSize);
+				free(entry->blob->pubKey.key);
+				free(entry->blob->algorithmParms.parms);
+				free(entry->blob);
+				free(entry);
+				return TCSERR(TSS_E_OUTOFMEMORY);
+			}
+			memcpy(entry->blob->PCRInfo, key_blob->PCRInfo, key_blob->PCRInfoSize);
+		} else {
+			entry->blob->PCRInfo = NULL;
+		}
 
 		/* allocate space for the encData if necessary */
 		if (key_blob->encSize != 0) {
 			entry->blob->encData = (BYTE *)malloc(key_blob->encSize);
 			if (entry->blob->encData == NULL) {
 				LogError("malloc of %u bytes failed.", key_blob->encSize);
+				free(entry->blob->PCRInfo);
 				free(entry->blob->pubKey.key);
+				free(entry->blob->algorithmParms.parms);
 				free(entry->blob);
 				free(entry);
 				return TCSERR(TSS_E_OUTOFMEMORY);
 			}
 			memcpy(entry->blob->encData, key_blob->encData, key_blob->encSize);
+		} else {
+			entry->blob->encData = NULL;
 		}
 		entry->blob->encSize = key_blob->encSize;
 	}
@@ -945,7 +970,10 @@ isKeyLoaded(TCPA_KEY_HANDLE keySlot)
 		goto not_loaded;
 
 	offset = 0;
-	UnloadBlob_KEY_HANDLE_LIST(&offset, resp, &keyList);
+	if (UnloadBlob_KEY_HANDLE_LIST_s(&offset, resp, (UINT64)respSize, &keyList)) {
+		free(resp);
+		goto not_loaded;
+	}
 	free(resp);
 	for (i = 0; i < keyList.loaded; i++) {
 		LogDebugFn("loaded TPM key handle: 0x%x", keyList.handle[i]);
@@ -989,7 +1017,7 @@ owner_evict_init()
 						  &respDataSize, &respData)))
 		return result;
 
-	if ((result = UnloadBlob_KEY_HANDLE_LIST(&offset, respData, &keyList))) {
+	if ((result = UnloadBlob_KEY_HANDLE_LIST_s(&offset, respData, (UINT64)respDataSize, &keyList))) {
 		free(respData);
 		return result;
 	}

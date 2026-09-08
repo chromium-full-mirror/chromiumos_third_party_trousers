@@ -38,6 +38,7 @@ tcs_wrap_RegisterKey(struct tcsd_thread_data *data)
 	UINT32 cVendorData;
 	BYTE *gbVendorData;
 	TSS_RESULT result;
+	UINT64 offset;
 
 	if (getData(TCSD_PACKET_TYPE_UINT32, 0, &hContext, 0, &data->comm))
 		return TCSERR(TSS_E_INTERNAL_ERROR);
@@ -63,6 +64,13 @@ tcs_wrap_RegisterKey(struct tcsd_thread_data *data)
 		free(rgbKey);
 		return TCSERR(TSS_E_INTERNAL_ERROR);
 	}
+
+	offset = 0;
+	if ((result = UnloadBlob_TSS_KEY_s(&offset, rgbKey, (UINT64)cKeySize, NULL))) {
+		free(rgbKey);
+		goto done;
+	}
+
 	if (getData(TCSD_PACKET_TYPE_UINT32, 5, &cVendorData, 0, &data->comm)) {
 		free(rgbKey);
 		return TCSERR(TSS_E_INTERNAL_ERROR);
@@ -484,31 +492,62 @@ LoadBlob_KM_KEYINFO2(UINT64 *offset, BYTE *blob, TSS_KM_KEYINFO2 *info)
 	LoadBlob(offset, info->ulVendorDataLength, blob, info->rgbVendorData);
 }
 
-void
-UnloadBlob_KM_KEYINFO(UINT64 *offset, BYTE *blob, TSS_KM_KEYINFO *info)
+TSS_RESULT
+UnloadBlob_KM_KEYINFO_s(UINT64 *offset, BYTE *blob, UINT64 capacity, TSS_KM_KEYINFO *info)
 {
+	TSS_RESULT rc;
+
+	if (!offset || !blob)
+		return TCSERR(TSS_E_BAD_PARAMETER);
+
 	if (!info) {
 		UINT32 ulVendorDataLength;
 
-		UnloadBlob_VERSION(offset, blob, NULL);
+		if ((rc = UnloadBlob_VERSION_s(offset, blob, capacity, NULL)))
+			return rc;
+		if (*offset > capacity || sizeof(TSS_UUID) > capacity - *offset)
+			return TCSERR(TSS_E_BAD_PARAMETER);
 		UnloadBlob_UUID(offset, blob, NULL);
+		if (*offset > capacity || sizeof(TSS_UUID) > capacity - *offset)
+			return TCSERR(TSS_E_BAD_PARAMETER);
 		UnloadBlob_UUID(offset, blob, NULL);
-		UnloadBlob_BYTE(offset, blob, NULL);
-		UnloadBlob_BOOL(offset, NULL, blob);
-		UnloadBlob_UINT32(offset, &ulVendorDataLength, blob);
+		if ((rc = UnloadBlob_BYTE_s(offset, NULL, blob, capacity)))
+			return rc;
+		if ((rc = UnloadBlob_BOOL_s(offset, NULL, blob, capacity)))
+			return rc;
+		if ((rc = UnloadBlob_UINT32_s(offset, &ulVendorDataLength, blob, capacity)))
+			return rc;
+		if (*offset > capacity || (UINT64)ulVendorDataLength > capacity - *offset)
+			return TCSERR(TSS_E_BAD_PARAMETER);
 
 		(*offset) += ulVendorDataLength;
 
-		return;
+		return TSS_SUCCESS;
 	}
 
-	UnloadBlob_VERSION(offset, blob, (TPM_VERSION *)&(info->versionInfo));
+	if ((rc = UnloadBlob_VERSION_s(offset, blob, capacity, (TPM_VERSION *)&(info->versionInfo))))
+		return rc;
+	if (*offset > capacity || sizeof(TSS_UUID) > capacity - *offset)
+		return TCSERR(TSS_E_BAD_PARAMETER);
 	UnloadBlob_UUID(offset, blob, &info->keyUUID);
+	if (*offset > capacity || sizeof(TSS_UUID) > capacity - *offset)
+		return TCSERR(TSS_E_BAD_PARAMETER);
 	UnloadBlob_UUID(offset, blob, &info->parentKeyUUID);
-	UnloadBlob_BYTE(offset, &info->bAuthDataUsage, blob);
-	UnloadBlob_BOOL(offset, &info->fIsLoaded, blob);
-	UnloadBlob_UINT32(offset, &info->ulVendorDataLength, blob);
-	UnloadBlob(offset, info->ulVendorDataLength, info->rgbVendorData, blob);
+	if ((rc = UnloadBlob_BYTE_s(offset, &info->bAuthDataUsage, blob, capacity)))
+		return rc;
+	if ((rc = UnloadBlob_BOOL_s(offset, (TSS_BOOL *)&info->fIsLoaded, blob, capacity)))
+		return rc;
+	if ((rc = UnloadBlob_UINT32_s(offset, &info->ulVendorDataLength, blob, capacity)))
+		return rc;
+	if (*offset > capacity || (UINT64)info->ulVendorDataLength > capacity - *offset)
+		return TCSERR(TSS_E_BAD_PARAMETER);
+	return UnloadBlob_s(offset, info->ulVendorDataLength, blob, capacity, info->rgbVendorData);
+}
+
+void
+UnloadBlob_KM_KEYINFO(UINT64 *offset, BYTE *blob, TSS_KM_KEYINFO *info)
+{
+	(void)UnloadBlob_KM_KEYINFO_s(offset, blob, UINT64_MAX, info);
 }
 
 #if 0

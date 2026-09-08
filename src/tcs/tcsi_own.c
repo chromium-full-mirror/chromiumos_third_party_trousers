@@ -56,15 +56,19 @@ TCSP_TakeOwnership_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 
 	/* Check on the Atmel Bug Patch */
 	offset = 0;
-	UnloadBlob_TSS_KEY(&offset, srkInfo, &srkKeyContainer);
+	memset(&srkKeyContainer, 0, sizeof(srkKeyContainer));
+	if ((result = UnloadBlob_TSS_KEY_s(&offset, srkInfo, (UINT64)srkInfoSize, &srkKeyContainer)))
+		goto done;
 	oldAuthDataUsage = srkKeyContainer.authDataUsage;
 	LogDebug("auth data usage is %.2X", oldAuthDataUsage);
+	destroy_key_refs(&srkKeyContainer);
+	memset(&srkKeyContainer, 0, sizeof(srkKeyContainer));
 
 	offset = 0;
 	if ((result = tpm_rqu_build_checked(TPM_ORD_TakeOwnership, &offset, TSS_TPM_TXBLOB_SIZE, txBlob, protocolID,
 				    encOwnerAuthSize, encOwnerAuth, encSrkAuthSize, encSrkAuth,
 				    srkInfoSize, srkInfo, ownerAuth)))
-		return result;
+		goto done;
 
 	if ((result = req_mgr_submit_req(txBlob)))
 		goto done;
@@ -76,7 +80,9 @@ TCSP_TakeOwnership_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 			goto done;
 
 		offset = 0;
-		if ((result = UnloadBlob_TSS_KEY(&offset, *srkKey, &srkKeyContainer))) {
+		memset(&srkKeyContainer, 0, sizeof(srkKeyContainer));
+		if ((result = UnloadBlob_TSS_KEY_s(&offset, *srkKey, (UINT64)*srkKeySize, &srkKeyContainer))) {
+			destroy_key_refs(&srkKeyContainer);
 			*srkKeySize = 0;
 			free(*srkKey);
 			goto done;
@@ -117,6 +123,7 @@ TCSP_TakeOwnership_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 			offset = 0;
 			LoadBlob_TSS_KEY(&offset, NULL, &srkKeyContainer);
 			if (offset > FAKE_SRK_SIZE) {
+				srkKeyContainer.pubKey.key = save;
 				destroy_key_refs(&srkKeyContainer);
 				*srkKeySize = 0;
 				free(*srkKey);
@@ -128,6 +135,7 @@ TCSP_TakeOwnership_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 
 			if ((result = ps_write_key(&SRK_UUID, &NULL_UUID, NULL, 0, fake_srk,
 						   offset))) {
+				srkKeyContainer.pubKey.key = save;
 				destroy_key_refs(&srkKeyContainer);
 				LogError("Error writing SRK to disk");
 				*srkKeySize = 0;
@@ -185,4 +193,3 @@ done:
 	auth_mgr_release_auth(ownerAuth, NULL, hContext);
 	return result;
 }
-

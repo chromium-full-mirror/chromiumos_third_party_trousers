@@ -35,8 +35,13 @@ TCS_RegisterKey_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 {
 	TSS_RESULT result;
 	TSS_BOOL is_reg;
+	UINT64 offset;
 
 	if ((result = ctx_verify_context(hContext)))
+		return result;
+
+	offset = 0;
+	if ((result = UnloadBlob_TSS_KEY_s(&offset, rgbKey, (UINT64)cKeySize, NULL)))
 		return result;
 
 	/* Check if key is already regisitered */
@@ -50,7 +55,7 @@ TCS_RegisterKey_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 		return TCSERR(TSS_E_KEY_ALREADY_REGISTERED);
 	}
 
-	LogDebugUnrollKey(rgbKey);
+	LogDebugUnrollKey(rgbKey, cKeySize);
 
 	/* Go ahead and store it in system persistant storage */
 	if ((result = ps_write_key(KeyUUID, WrappingKeyUUID, gbVendorData, cVendorData, rgbKey,
@@ -440,7 +445,12 @@ TCS_GetRegisteredKey_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	}
 
 	offset = 0;
-	UnloadBlob_TSS_KEY(&offset, tcpaKeyBlob, &tcpaKey);
+	memset(&tcpaKey, 0, sizeof(tcpaKey));
+	if ((result = UnloadBlob_TSS_KEY_s(&offset, tcpaKeyBlob, (UINT64)keySize, &tcpaKey))) {
+		free(*ppKeyInfo);
+		*ppKeyInfo = NULL;
+		return result;
+	}
 
 	(*ppKeyInfo)->bAuthDataUsage = tcpaKey.authDataUsage;
 
@@ -464,6 +474,7 @@ TCS_GetRegisteredKey_Internal(TCS_CONTEXT_HANDLE hContext,	/* in */
 	(*ppKeyInfo)->rgbVendorData = 0;
 
 	memcpy(&((*ppKeyInfo)->parentKeyUUID), &parentUUID, sizeof(TSS_UUID));
+	destroy_key_refs(&tcpaKey);
 	return TSS_SUCCESS;
 }
 
