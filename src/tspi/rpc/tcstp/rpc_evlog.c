@@ -92,7 +92,7 @@ RPC_GetPcrEvent_TP(struct host_table_entry *hte,
 		}
 
 		if (ppEvent) {
-			*ppEvent = malloc(sizeof(TSS_PCR_EVENT));
+			*ppEvent = calloc(1, sizeof(TSS_PCR_EVENT));
 			if (*ppEvent == NULL) {
 				LogError("malloc of %zd bytes failed.",
 					 sizeof(TSS_PCR_EVENT));
@@ -120,7 +120,8 @@ RPC_GetPcrEventsByPcr_TP(struct host_table_entry *hte,
 				     TSS_PCR_EVENT ** ppEvents	/* out */
     ) {
 	TSS_RESULT result;
-	UINT32 i, j;
+	int i;
+	UINT32 j, k;
 
 	initData(&hte->comm, 4);
 	hte->comm.hdr.u.ordinal = TCSD_ORD_GETPCREVENTBYPCR;
@@ -150,6 +151,11 @@ RPC_GetPcrEventsByPcr_TP(struct host_table_entry *hte,
 		}
 
 		if (*pEventCount > 0) {
+			if (*pEventCount > hte->comm.hdr.num_parms ||
+			    (UINT64)(*pEventCount) > (UINT64)UINT32_MAX / sizeof(TSS_PCR_EVENT)) {
+				result = TSPERR(TSS_E_INTERNAL_ERROR);
+				goto done;
+			}
 			*ppEvents = calloc_tspi(hte->tspContext,
 						sizeof(TSS_PCR_EVENT) * (*pEventCount));
 			if (*ppEvents == NULL) {
@@ -161,7 +167,11 @@ RPC_GetPcrEventsByPcr_TP(struct host_table_entry *hte,
 			i = 1;
 			for (j = 0; j < (*pEventCount); j++) {
 				if (getData(TCSD_PACKET_TYPE_PCR_EVENT, i++, &((*ppEvents)[j]), 0, &hte->comm)) {
-					free(*ppEvents);
+					for (k = 0; k < j; k++) {
+						free((*ppEvents)[k].rgbPcrValue);
+						free((*ppEvents)[k].rgbEvent);
+					}
+					free_tspi(hte->tspContext, *ppEvents);
 					*ppEvents = NULL;
 					result = TSPERR(TSS_E_INTERNAL_ERROR);
 					goto done;
@@ -182,7 +192,8 @@ RPC_GetPcrEventLog_TP(struct host_table_entry *hte,
 				  TSS_PCR_EVENT ** ppEvents	/* out */
     ) {
 	TSS_RESULT result;
-	int i, j;
+	int i;
+	UINT32 j, k;
 
 	initData(&hte->comm, 1);
 	hte->comm.hdr.u.ordinal = TCSD_ORD_GETPCREVENTLOG;
@@ -203,6 +214,11 @@ RPC_GetPcrEventLog_TP(struct host_table_entry *hte,
 		}
 
 		if (*pEventCount > 0) {
+			if (*pEventCount > hte->comm.hdr.num_parms ||
+			    (UINT64)(*pEventCount) > (UINT64)UINT32_MAX / sizeof(TSS_PCR_EVENT)) {
+				result = TSPERR(TSS_E_INTERNAL_ERROR);
+				goto done;
+			}
 			*ppEvents = calloc_tspi(hte->tspContext,
 						sizeof(TSS_PCR_EVENT) * (*pEventCount));
 			if (*ppEvents == NULL) {
@@ -213,9 +229,13 @@ RPC_GetPcrEventLog_TP(struct host_table_entry *hte,
 			}
 
 			i = 1;
-			for (j = 0; (UINT32)j < (*pEventCount); j++) {
+			for (j = 0; j < (*pEventCount); j++) {
 				if (getData(TCSD_PACKET_TYPE_PCR_EVENT, i++, &((*ppEvents)[j]), 0, &hte->comm)) {
-					free(*ppEvents);
+					for (k = 0; k < j; k++) {
+						free((*ppEvents)[k].rgbPcrValue);
+						free((*ppEvents)[k].rgbEvent);
+					}
+					free_tspi(hte->tspContext, *ppEvents);
 					*ppEvents = NULL;
 					result = TSPERR(TSS_E_INTERNAL_ERROR);
 					goto done;

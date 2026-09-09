@@ -173,9 +173,11 @@ Trspi_UnloadBlob(UINT64 *offset, size_t size, BYTE *from, BYTE *to)
 TSS_RESULT
 Trspi_UnloadBlob_s(UINT64 *offset, size_t size, BYTE *from, UINT64 capacity, BYTE *to)
 {
+	if (!offset || !from)
+		return TSPERR(TSS_E_BAD_PARAMETER);
 	if (size == 0)
 		return TSS_SUCCESS;
-	if (*offset + size > capacity)
+	if (*offset > capacity || (UINT64)size > capacity - *offset)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 	if (to)
 		memcpy(to, &from[*offset], size);
@@ -202,7 +204,9 @@ Trspi_UnloadBlob_BYTE(UINT64 *offset, BYTE *dataOut, BYTE *blob)
 TSS_RESULT
 Trspi_UnloadBlob_BYTE_s(UINT64 *offset, BYTE *dataOut, BYTE *blob, UINT64 capacity)
 {
-	if (*offset + 1 > capacity)
+	if (!offset || !blob)
+		return TSPERR(TSS_E_BAD_PARAMETER);
+	if (*offset > capacity || 1 > capacity - *offset)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 	if (dataOut)
 		*dataOut = blob[*offset];
@@ -229,7 +233,9 @@ Trspi_UnloadBlob_BOOL(UINT64 *offset, TSS_BOOL *dataOut, BYTE *blob)
 TSS_RESULT
 Trspi_UnloadBlob_BOOL_s(UINT64 *offset, TSS_BOOL *dataOut, BYTE *blob, UINT64 capacity)
 {
-	if (*offset + 1 > capacity)
+	if (!offset || !blob)
+		return TSPERR(TSS_E_BAD_PARAMETER);
+	if (*offset > capacity || 1 > capacity - *offset)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 	if (dataOut)
 		*dataOut = blob[*offset];
@@ -272,7 +278,9 @@ Trspi_UnloadBlob_UINT64(UINT64 *offset, UINT64 *out, BYTE *blob)
 TSS_RESULT
 Trspi_UnloadBlob_UINT64_s(UINT64 *offset, UINT64 *out, BYTE *blob, UINT64 capacity)
 {
-	if (*offset + sizeof(UINT64) > capacity)
+	if (!offset || !blob)
+		return TSPERR(TSS_E_BAD_PARAMETER);
+	if (*offset > capacity || sizeof(UINT64) > capacity - *offset)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 	if (out)
 		*out = Decode_UINT64(&blob[*offset]);
@@ -291,7 +299,9 @@ Trspi_UnloadBlob_UINT32(UINT64 *offset, UINT32 *out, BYTE *blob)
 TSS_RESULT
 Trspi_UnloadBlob_UINT32_s(UINT64 *offset, UINT32 *out, BYTE *blob, UINT64 capacity)
 {
-	if (*offset + sizeof(UINT32) > capacity)
+	if (!offset || !blob)
+		return TSPERR(TSS_E_BAD_PARAMETER);
+	if (*offset > capacity || sizeof(UINT32) > capacity - *offset)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 	if (out)
 		*out = Decode_UINT32(&blob[*offset]);
@@ -310,7 +320,9 @@ Trspi_UnloadBlob_UINT16(UINT64 *offset, UINT16 *out, BYTE *blob)
 TSS_RESULT
 Trspi_UnloadBlob_UINT16_s(UINT64 *offset, UINT16 *out, BYTE *blob, UINT64 capacity)
 {
-	if (*offset + sizeof(UINT16) > capacity)
+	if (!offset || !blob)
+		return TSPERR(TSS_E_BAD_PARAMETER);
+	if (*offset > capacity || sizeof(UINT16) > capacity - *offset)
 		return TSPERR(TSS_E_BAD_PARAMETER);
 	if (out)
 		*out = Decode_UINT16(&blob[*offset]);
@@ -1414,6 +1426,8 @@ Trspi_UnloadBlob_PCR_EVENT(UINT64 *offset, BYTE *blob, TSS_PCR_EVENT *event)
 		event->rgbEvent = malloc(event->ulEventLength);
 		if (event->rgbEvent == NULL) {
 			LogError("malloc of %d bytes failed.", event->ulEventLength);
+			free(event->rgbPcrValue);
+			event->rgbPcrValue = NULL;
 			return TSPERR(TSS_E_OUTOFMEMORY);
 		}
 

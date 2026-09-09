@@ -144,7 +144,8 @@ RPC_EnumRegisteredKeys_TP(struct host_table_entry *hte,
 				      TSS_KM_KEYINFO ** ppKeyHierarchy	/* out */
     ) {
 	TSS_RESULT result;
-	int i, j;
+	int i;
+	UINT32 j, k;
 
 	initData(&hte->comm, 2);
 	hte->comm.hdr.u.ordinal = TCSD_ORD_ENUMREGISTEREDKEYS;
@@ -171,6 +172,11 @@ RPC_EnumRegisteredKeys_TP(struct host_table_entry *hte,
 		}
 
 		if (*pcKeyHierarchySize > 0) {
+			if (*pcKeyHierarchySize > hte->comm.hdr.num_parms ||
+			    (UINT64)(*pcKeyHierarchySize) > (UINT64)UINT32_MAX / sizeof(TSS_KM_KEYINFO)) {
+				result = TSPERR(TSS_E_INTERNAL_ERROR);
+				goto done;
+			}
 			*ppKeyHierarchy = malloc((*pcKeyHierarchySize) * sizeof(TSS_KM_KEYINFO));
 			if (*ppKeyHierarchy == NULL) {
 				LogError("malloc of %zu bytes failed.", (*pcKeyHierarchySize) *
@@ -178,9 +184,11 @@ RPC_EnumRegisteredKeys_TP(struct host_table_entry *hte,
 				result = TSPERR(TSS_E_OUTOFMEMORY);
 				goto done;
 			}
-			for (j = 0; (UINT32)j < *pcKeyHierarchySize; j++) {
+			for (j = 0; j < *pcKeyHierarchySize; j++) {
 				if (getData(TCSD_PACKET_TYPE_KM_KEYINFO, i++,
 					    &((*ppKeyHierarchy)[j]), 0, &hte->comm)) {
+					for (k = 0; k < j; k++)
+						free((*ppKeyHierarchy)[k].rgbVendorData);
 					free(*ppKeyHierarchy);
 					*ppKeyHierarchy = NULL;
 					result = TSPERR(TSS_E_INTERNAL_ERROR);
@@ -204,7 +212,8 @@ RPC_EnumRegisteredKeys2_TP(struct host_table_entry *hte,
 					  )
 {
 	TSS_RESULT result;
-	int i, j;
+	int i;
+	UINT32 j, k;
 
 	initData(&hte->comm, 2);
 	hte->comm.hdr.u.ordinal = TCSD_ORD_ENUMREGISTEREDKEYS2;
@@ -231,6 +240,11 @@ RPC_EnumRegisteredKeys2_TP(struct host_table_entry *hte,
 		}
 
 		if (*pcKeyHierarchySize > 0) {
+			if (*pcKeyHierarchySize > hte->comm.hdr.num_parms ||
+			    (UINT64)(*pcKeyHierarchySize) > (UINT64)UINT32_MAX / sizeof(TSS_KM_KEYINFO2)) {
+				result = TSPERR(TSS_E_INTERNAL_ERROR);
+				goto done;
+			}
 			*ppKeyHierarchy = malloc((*pcKeyHierarchySize) * sizeof(TSS_KM_KEYINFO2));
 			if (*ppKeyHierarchy == NULL) {
 				LogError("malloc of %zu bytes failed.", (*pcKeyHierarchySize) *
@@ -238,9 +252,11 @@ RPC_EnumRegisteredKeys2_TP(struct host_table_entry *hte,
 				result = TSPERR(TSS_E_OUTOFMEMORY);
 				goto done;
 			}
-			for (j = 0; (UINT32)j < *pcKeyHierarchySize; j++) {
+			for (j = 0; j < *pcKeyHierarchySize; j++) {
 				if (getData(TCSD_PACKET_TYPE_KM_KEYINFO2, i++,
 					    &((*ppKeyHierarchy)[j]), 0, &hte->comm)) {
+					for (k = 0; k < j; k++)
+						free((*ppKeyHierarchy)[k].rgbVendorData);
 					free(*ppKeyHierarchy);
 					*ppKeyHierarchy = NULL;
 					result = TSPERR(TSS_E_INTERNAL_ERROR);
@@ -365,12 +381,16 @@ LoadBlob_LOADKEY_INFO(UINT64 *offset, BYTE *blob, TCS_LOADKEY_INFO *info)
 void
 UnloadBlob_LOADKEY_INFO(UINT64 *offset, BYTE *blob, TCS_LOADKEY_INFO *info)
 {
-	Trspi_UnloadBlob_UUID(offset, blob, &info->keyUUID);
-	Trspi_UnloadBlob_UUID(offset, blob, &info->parentKeyUUID);
-	Trspi_UnloadBlob(offset, TCPA_DIGEST_SIZE, blob, (BYTE *)&info->paramDigest.digest);
-	Trspi_UnloadBlob_UINT32(offset, &info->authData.AuthHandle, blob);
-	Trspi_UnloadBlob(offset, TCPA_NONCE_SIZE, blob, (BYTE *)&info->authData.NonceOdd.nonce);
-	Trspi_UnloadBlob(offset, TCPA_NONCE_SIZE, blob, (BYTE *)&info->authData.NonceEven.nonce);
-	Trspi_UnloadBlob_BOOL(offset, &info->authData.fContinueAuthSession, blob);
-	Trspi_UnloadBlob(offset, TCPA_DIGEST_SIZE, blob, (BYTE *)&info->authData.HMAC);
+	Trspi_UnloadBlob_UUID(offset, blob, info ? &info->keyUUID : NULL);
+	Trspi_UnloadBlob_UUID(offset, blob, info ? &info->parentKeyUUID : NULL);
+	Trspi_UnloadBlob(offset, TCPA_DIGEST_SIZE, blob,
+			 info ? (BYTE *)&info->paramDigest.digest : NULL);
+	Trspi_UnloadBlob_UINT32(offset, info ? &info->authData.AuthHandle : NULL, blob);
+	Trspi_UnloadBlob(offset, TCPA_NONCE_SIZE, blob,
+			 info ? (BYTE *)&info->authData.NonceOdd.nonce : NULL);
+	Trspi_UnloadBlob(offset, TCPA_NONCE_SIZE, blob,
+			 info ? (BYTE *)&info->authData.NonceEven.nonce : NULL);
+	Trspi_UnloadBlob_BOOL(offset, info ? &info->authData.fContinueAuthSession : NULL, blob);
+	Trspi_UnloadBlob(offset, TCPA_DIGEST_SIZE, blob,
+			 info ? (BYTE *)&info->authData.HMAC : NULL);
 }

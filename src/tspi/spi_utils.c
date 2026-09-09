@@ -416,9 +416,9 @@ LoadBlob_AUTH(UINT64 *offset, BYTE *blob, TPM_AUTH *auth)
 void
 UnloadBlob_AUTH(UINT64 *offset, BYTE *blob, TPM_AUTH *auth)
 {
-	Trspi_UnloadBlob(offset, 20, blob, auth->NonceEven.nonce);
-	Trspi_UnloadBlob_BOOL(offset, &auth->fContinueAuthSession, blob);
-	Trspi_UnloadBlob(offset, 20, blob, (BYTE *)&auth->HMAC);
+	Trspi_UnloadBlob(offset, 20, blob, auth ? auth->NonceEven.nonce : NULL);
+	Trspi_UnloadBlob_BOOL(offset, auth ? &auth->fContinueAuthSession : NULL, blob);
+	Trspi_UnloadBlob(offset, 20, blob, auth ? (BYTE *)&auth->HMAC : NULL);
 }
 
 /* If alloc is true, we allocate a new buffer for the bytes and set *data to that.

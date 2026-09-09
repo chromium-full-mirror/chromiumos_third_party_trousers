@@ -166,87 +166,185 @@ getData(TCSD_PACKET_TYPE dataType,
 {
 	TSS_RESULT result;
 	UINT64 old_offset, offset;
-	TCSD_PACKET_TYPE *type = (TCSD_PACKET_TYPE *)(comm->buf + comm->hdr.type_offset) + index;
+	UINT64 limit;
+	TCSD_PACKET_TYPE *type;
 
-	if ((UINT32)index >= comm->hdr.num_parms || dataType != *type) {
+	/* The header was decoded straight off the wire in sendTCSDPacket();
+	 * clamp every offset against the bytes that were actually received
+	 * before dereferencing comm->buf. packet_size <= buf_size is enforced
+	 * by send_init()/tcs_sendit(); packet_size is what was actually read. */
+	if (!comm || !comm->buf || index < 0)
+		return TSS_TCP_RPC_BAD_PACKET_TYPE;
+
+	limit = comm->hdr.packet_size;
+	if (limit > comm->buf_size)
+		limit = comm->buf_size;
+
+	if ((UINT64)comm->hdr.type_offset > limit ||
+	    (UINT64)comm->hdr.type_size > limit - (UINT64)comm->hdr.type_offset ||
+	    /* Note: type_size is an element count here because
+	     * sizeof(TCSD_PACKET_TYPE) == 1 (BYTE in rpc_tcstp.h). */
+	    (UINT32)index >= comm->hdr.type_size ||
+	    (UINT32)index >= comm->hdr.num_parms) {
+		LogDebug("type_offset/type_size/index out of range");
+		return TSS_TCP_RPC_BAD_PACKET_TYPE;
+	}
+	type = (TCSD_PACKET_TYPE *)(comm->buf + comm->hdr.type_offset) + index;
+
+	if (dataType != *type) {
 		LogDebug("Data type of TCS packet element %d doesn't match.", index);
 		return TSS_TCP_RPC_BAD_PACKET_TYPE;
 	}
 	old_offset = offset = comm->hdr.parm_offset;
+	if (old_offset > limit) {
+		LogDebug("parm_offset out of range");
+		return TSS_TCP_RPC_BAD_PACKET_TYPE;
+	}
+	UINT64 rem_cap = limit - old_offset;
+	if (rem_cap > (UINT64)comm->hdr.parm_size)
+		rem_cap = (UINT64)comm->hdr.parm_size;
+
 	switch (dataType) {
 		case TCSD_PACKET_TYPE_BYTE:
+			if (sizeof(BYTE) > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			Trspi_UnloadBlob_BYTE(&offset, (BYTE *)theData, comm->buf);
 			break;
 		case TCSD_PACKET_TYPE_BOOL:
+			if (sizeof(TSS_BOOL) > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			Trspi_UnloadBlob_BOOL(&offset, (TSS_BOOL *)theData, comm->buf);
 			break;
 		case TCSD_PACKET_TYPE_UINT16:
+			if (sizeof(UINT16) > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			Trspi_UnloadBlob_UINT16(&offset, (UINT16 *)theData, comm->buf);
 			break;
 		case TCSD_PACKET_TYPE_UINT32:
+			if (sizeof(UINT32) > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			Trspi_UnloadBlob_UINT32(&offset, (UINT32 *)theData, comm->buf);
 			break;
 		case TCSD_PACKET_TYPE_UINT64:
+			if (sizeof(UINT64) > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			Trspi_UnloadBlob_UINT64(&offset, (UINT64 *)theData, comm->buf);
 			break;
 		case TCSD_PACKET_TYPE_PBYTE:
+			if (theDataSize < 0 || (UINT64)theDataSize > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			Trspi_UnloadBlob(&offset, theDataSize, comm->buf, (BYTE *)theData);
 			break;
 		case TCSD_PACKET_TYPE_NONCE:
+			if (sizeof(TPM_NONCE) > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			Trspi_UnloadBlob_NONCE(&offset, comm->buf, (TPM_NONCE *)theData);
 			break;
 		case TCSD_PACKET_TYPE_DIGEST:
+			if (sizeof(TCPA_DIGEST) > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			Trspi_UnloadBlob(&offset, sizeof(TCPA_DIGEST), comm->buf,
-					 ((TCPA_DIGEST *)theData)->digest);
+					 theData ? ((TCPA_DIGEST *)theData)->digest : NULL);
 			break;
 		case TCSD_PACKET_TYPE_AUTH:
+			if (sizeof(TPM_NONCE) + sizeof(TSS_BOOL) + sizeof(TPM_AUTHDATA) > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			UnloadBlob_AUTH(&offset, comm->buf, ((TPM_AUTH *)theData));
 			break;
 		case TCSD_PACKET_TYPE_UUID:
+			if (sizeof(TSS_UUID) > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			Trspi_UnloadBlob_UUID(&offset, comm->buf, ((TSS_UUID *)theData));
 			break;
 		case TCSD_PACKET_TYPE_ENCAUTH:
+			if (sizeof(TCPA_ENCAUTH) > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			Trspi_UnloadBlob(&offset, sizeof(TCPA_ENCAUTH), comm->buf,
-					 ((TCPA_ENCAUTH *)theData)->authdata);
+					 theData ? ((TCPA_ENCAUTH *)theData)->authdata : NULL);
 			break;
 		case TCSD_PACKET_TYPE_VERSION:
+			if (sizeof(TCPA_VERSION) > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			Trspi_UnloadBlob_TCPA_VERSION(&offset, comm->buf,
 						      ((TCPA_VERSION *)theData));
 			break;
-		case TCSD_PACKET_TYPE_KM_KEYINFO:
+		case TCSD_PACKET_TYPE_KM_KEYINFO: {
+			/* Fixed prefix: TSS_VERSION(4) + UUID(16) + UUID(16) + BYTE(1) + BOOL(1) + UINT32(4) = 42 */
+			UINT32 vlen;
+			if (42 > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
+			vlen = Decode_UINT32(&comm->buf[old_offset + 38]);
+			if ((UINT64)vlen > rem_cap - 42)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			if ((result = Trspi_UnloadBlob_KM_KEYINFO(&offset, comm->buf,
 								  ((TSS_KM_KEYINFO *)theData))))
 				return result;
 			break;
-		case TCSD_PACKET_TYPE_KM_KEYINFO2:
+		}
+		case TCSD_PACKET_TYPE_KM_KEYINFO2: {
+			/* Fixed prefix: TSS_VERSION(4) + UUID(16) + UUID(16) + BYTE(1) +
+			 * UINT32(4) + UINT32(4) + BOOL(1) + UINT32(4) = 50 */
+			UINT32 vlen;
+			if (50 > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
+			vlen = Decode_UINT32(&comm->buf[old_offset + 46]);
+			if ((UINT64)vlen > rem_cap - 50)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			if ((result = Trspi_UnloadBlob_KM_KEYINFO2(&offset, comm->buf,
 								   ((TSS_KM_KEYINFO2 *)theData))))
 				return result;
 			break;
+		}
 #ifdef TSS_BUILD_PS
 		case TCSD_PACKET_TYPE_LOADKEY_INFO:
+			/* Fixed size: UUID(16) + UUID(16) + Digest(20) + AuthHandle(4) +
+			 * Nonce(20) + Nonce(20) + BOOL(1) + HMAC(20) = 117 */
+			if (117 > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			UnloadBlob_LOADKEY_INFO(&offset, comm->buf, ((TCS_LOADKEY_INFO *)theData));
 			break;
 #endif
-		case TCSD_PACKET_TYPE_PCR_EVENT:
+		case TCSD_PACKET_TYPE_PCR_EVENT: {
+			/* Fixed prefix: TCPA_VERSION(4) + ulPcrIndex(4) + eventType(4) +
+			 * ulPcrValueLength(4) + ulEventLength(4) = 20 */
+			UINT32 pcr_len, event_len;
+			if (20 > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
+			pcr_len = Decode_UINT32(&comm->buf[old_offset + 12]);
+			if ((UINT64)pcr_len > rem_cap - 20)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
+			event_len = Decode_UINT32(&comm->buf[old_offset + 16 + pcr_len]);
+			if ((UINT64)event_len > rem_cap - 20 - (UINT64)pcr_len)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			if ((result = Trspi_UnloadBlob_PCR_EVENT(&offset, comm->buf,
 								 ((TSS_PCR_EVENT *)theData))))
 				return result;
 			break;
+		}
 		case TCSD_PACKET_TYPE_COUNTER_VALUE:
+			if (sizeof(TPM_STRUCTURE_TAG) + 4 + sizeof(UINT32) > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			Trspi_UnloadBlob_COUNTER_VALUE(&offset, comm->buf,
 						       ((TPM_COUNTER_VALUE *)theData));
 			break;
 		case TCSD_PACKET_TYPE_SECRET:
+			if (sizeof(TCPA_SECRET) > rem_cap)
+				return TSS_TCP_RPC_BAD_PACKET_TYPE;
 			Trspi_UnloadBlob(&offset, sizeof(TCPA_SECRET), comm->buf,
-					 ((TCPA_SECRET *)theData)->authdata);
+					 theData ? ((TCPA_SECRET *)theData)->authdata : NULL);
 			break;
 		default:
 			LogError("unknown data type (%d) in TCSD packet!", dataType);
 			return -1;
 	}
+	UINT64 consumed = offset - old_offset;
+	if (consumed > (UINT64)comm->hdr.parm_size) {
+		LogDebug("parameter consumed (%llu) exceeds parm_size (%u)",
+			 (unsigned long long)consumed, comm->hdr.parm_size);
+		return TSS_TCP_RPC_BAD_PACKET_TYPE;
+	}
 	comm->hdr.parm_offset = offset;
-	comm->hdr.parm_size -= (offset - old_offset);
+	comm->hdr.parm_size -= (UINT32)consumed;
 
 	return TSS_SUCCESS;
 }
