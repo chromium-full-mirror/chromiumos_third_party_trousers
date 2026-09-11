@@ -28,16 +28,17 @@ Tspi_Data_Bind(TSS_HENCDATA hEncData,	/* in */
 	       UINT32 ulDataLength,	/* in */
 	       BYTE *rgbDataToBind)	/* in */
 {
-	UINT32 encDataLength;
+	UINT32 encDataLength = 0;
 	BYTE encData[256];
-	BYTE *keyData;
-	UINT32 keyDataLength;
+	BYTE *keyData = NULL;
+	UINT32 keyDataLength = 0;
 	TCPA_BOUND_DATA boundData;
-	UINT64 offset;
+	UINT64 offset = 0;
 	BYTE bdblob[256];
 	TCPA_RESULT result;
 	TSS_KEY keyContainer;
 	TSS_HCONTEXT tspContext;
+	UINT32 maxPayloadLength;
 
 	LogTrace();
 	if (rgbDataToBind == NULL)
@@ -53,12 +54,12 @@ Tspi_Data_Bind(TSS_HENCDATA hEncData,	/* in */
 	if ((result = obj_rsakey_get_blob(hEncKey, &keyDataLength, &keyData)))
 		return result;
 
+	memset(&keyContainer, 0, sizeof(TSS_KEY));
 	offset = 0;
-	if ((result = UnloadBlob_TSS_KEY(&offset, keyData, &keyContainer))) {
-		free_tspi(tspContext, keyData);
-		return result;
-	}
+	result = UnloadBlob_TSS_KEY_s(&offset, keyData, keyDataLength, &keyContainer);
 	free_tspi(tspContext, keyData);
+	if (result)
+		goto done;
 
 	if (keyContainer.keyUsage != TPM_KEY_BIND &&
 	    keyContainer.keyUsage != TPM_KEY_LEGACY) {
@@ -66,64 +67,92 @@ Tspi_Data_Bind(TSS_HENCDATA hEncData,	/* in */
 		goto done;
 	}
 
-	if (keyContainer.pubKey.keyLength < ulDataLength) {
+	/* RSA_public_encrypt() writes RSA_size(rsa) (= modulus length) bytes.
+	 * Validate key modulus against encData stack buffer bounds. */
+	if (keyContainer.pubKey.key == NULL ||
+	    keyContainer.pubKey.keyLength == 0 ||
+	    keyContainer.pubKey.keyLength > sizeof(encData)) {
 		result = TSPERR(TSS_E_ENC_INVALID_LENGTH);
 		goto done;
 	}
 
-	if (keyContainer.algorithmParms.encScheme == TCPA_ES_RSAESPKCSv15 &&
-	    keyContainer.keyUsage == TPM_KEY_LEGACY) {
+	/* Compute maximum plaintext payload length based on padding scheme.
+	 * For legacy keys using PKCS#1 v1.5, overhead is 11 bytes.
+	 * For bind keys using PKCS#1 v1.5, bound data header adds 5 bytes (16 total).
+	 * For bind keys using OAEP (default), overhead is 42 bytes + 5 byte header (47 total).
+	 * Reject invalid or unsupported schemes with TSS_E_INVALID_ENCSCHEME.
+	 * Reject payloads that exceed bounds to prevent stack overflow in bdblob[256]. */
+	if (keyContainer.keyUsage == TPM_KEY_LEGACY) {
+		if (keyContainer.algorithmParms.encScheme != TCPA_ES_RSAESPKCSv15) {
+			result = TSPERR(TSS_E_INVALID_ENCSCHEME);
+			goto done;
+		}
+		if (keyContainer.pubKey.keyLength < 11) {
+			result = TSPERR(TSS_E_ENC_INVALID_LENGTH);
+			goto done;
+		}
+		maxPayloadLength = keyContainer.pubKey.keyLength - 11;
+	} else { /* TPM_KEY_BIND */
+		if (keyContainer.algorithmParms.encScheme == TCPA_ES_RSAESPKCSv15) {
+			if (keyContainer.pubKey.keyLength < 16) {
+				result = TSPERR(TSS_E_ENC_INVALID_LENGTH);
+				goto done;
+			}
+			maxPayloadLength = keyContainer.pubKey.keyLength - 16;
+		} else if (keyContainer.algorithmParms.encScheme == TCPA_ES_RSAESOAEP_SHA1_MGF1) {
+			if (keyContainer.pubKey.keyLength < 47) {
+				result = TSPERR(TSS_E_ENC_INVALID_LENGTH);
+				goto done;
+			}
+			maxPayloadLength = keyContainer.pubKey.keyLength - 47;
+		} else {
+			result = TSPERR(TSS_E_INVALID_ENCSCHEME);
+			goto done;
+		}
+	}
+
+	if (ulDataLength > maxPayloadLength ||
+	    (keyContainer.keyUsage == TPM_KEY_BIND &&
+	     (sizeof(TCPA_VERSION) + sizeof(BYTE) + (UINT64)ulDataLength > sizeof(bdblob)))) {
+		result = TSPERR(TSS_E_ENC_INVALID_LENGTH);
+		goto done;
+	}
+
+	if (keyContainer.keyUsage == TPM_KEY_LEGACY) {
 		if ((result = Trspi_RSA_PKCS15_Encrypt(rgbDataToBind, ulDataLength, encData,
 						       &encDataLength, keyContainer.pubKey.key,
 						       keyContainer.pubKey.keyLength)))
 			goto done;
-	} else if (keyContainer.algorithmParms.encScheme == TCPA_ES_RSAESPKCSv15 &&
-		   keyContainer.keyUsage == TPM_KEY_BIND) {
+	} else if (keyContainer.algorithmParms.encScheme == TCPA_ES_RSAESPKCSv15) {
 		boundData.payload = TCPA_PT_BIND;
-
 		memcpy(&boundData.ver, &VERSION_1_1, sizeof(TCPA_VERSION));
-
-		boundData.payloadData = malloc(ulDataLength);
-		if (boundData.payloadData == NULL) {
-			result = TSPERR(TSS_E_OUTOFMEMORY);
-			goto done;
-		}
-		memcpy(boundData.payloadData, rgbDataToBind, ulDataLength);
+		boundData.payloadData = rgbDataToBind;
 
 		offset = 0;
 		Trspi_LoadBlob_BOUND_DATA(&offset, boundData, ulDataLength, bdblob);
 
 		if ((result = Trspi_RSA_PKCS15_Encrypt(bdblob, offset, encData,
 						       &encDataLength, keyContainer.pubKey.key,
-						       keyContainer.pubKey.keyLength))) {
-			free(boundData.payloadData);
+						       keyContainer.pubKey.keyLength)))
 			goto done;
-		}
-		free(boundData.payloadData);
 	} else {
+		/* TCPA_ES_RSAESOAEP_SHA1_MGF1 */
 		boundData.payload = TCPA_PT_BIND;
-
 		memcpy(&boundData.ver, &VERSION_1_1, sizeof(TCPA_VERSION));
-
-		boundData.payloadData = malloc(ulDataLength);
-		if (boundData.payloadData == NULL) {
-			LogError("malloc of %u bytes failed.", ulDataLength);
-			result = TSPERR(TSS_E_OUTOFMEMORY);
-			goto done;
-		}
-		memcpy(boundData.payloadData, rgbDataToBind, ulDataLength);
+		boundData.payloadData = rgbDataToBind;
 
 		offset = 0;
 		Trspi_LoadBlob_BOUND_DATA(&offset, boundData, ulDataLength, bdblob);
 
 		if ((result = Trspi_RSA_Encrypt(bdblob, offset, encData, &encDataLength,
 						keyContainer.pubKey.key,
-						keyContainer.pubKey.keyLength))) {
-			free(boundData.payloadData);
+						keyContainer.pubKey.keyLength)))
 			goto done;
-		}
+	}
 
-		free(boundData.payloadData);
+	if (encDataLength > sizeof(encData)) {
+		result = TSPERR(TSS_E_INTERNAL_ERROR);
+		goto done;
 	}
 
 	if ((result = obj_encdata_set_data(hEncData, encDataLength, encData))) {
