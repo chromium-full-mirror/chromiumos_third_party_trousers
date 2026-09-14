@@ -25,7 +25,6 @@
 #include <vector>
 
 #include <base/logging.h>
-#include <base/notreached.h>
 
 namespace trousers {
 
@@ -36,7 +35,7 @@ class ScopedTssContextRelease {
     // used slightly differently, it may end up with a context in |unused|.
     // For now, treat that as a bug.
     if (unused) {
-      NOTREACHED_IN_MIGRATION()
+      LOG(ERROR)
           << "Unexpected data in the unused argument - a misuse of "
              "ScopedTssContext. Please report to crbug.com/821825";
       return;
@@ -52,7 +51,7 @@ class ScopedTssMemoryRelease {
     if (!memory)
       return;
     if (!context) {
-      NOTREACHED_IN_MIGRATION()
+      LOG(ERROR)
           << "Leaking Trousers memory due to null context. Please "
              "report to crbug.com/821825";
       return;
@@ -67,7 +66,7 @@ class ScopedTssObjectRelease {
     if (!handle)
       return;
     if (!context) {
-      NOTREACHED_IN_MIGRATION()
+      LOG(ERROR)
           << "Leaking Trousers handle due to null context. Please "
              "report to crbug.com/821825";
       return;
